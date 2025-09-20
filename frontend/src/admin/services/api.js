@@ -109,36 +109,89 @@ export const signIn = async (credentials) => {
 
 
 
-// Get users with pagination
-export const getUsers = async (token, page = 1, limit = 6) => {
+// get all users for user management
+// src/services/api.js
+export const getUsers = async (page = 1) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Mock data with consistent phone numbers
-    const mockUsers = Array.from({ length: 50 }, (_, i) => ({
-      id: i + 1,
-      fullName: `User ${i + 1}`,
-      phoneNumber: `+2519${String(10000000 + i).padStart(8, '0')}`, // Consistent phone numbers
-      registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
-      totalPayment: Math.floor(Math.random() * 10000),
-      isActive: Math.random() > 0.2
-    }));
-
-    const startIndex = (page - 1) * limit;
-    const paginatedUsers = mockUsers.slice(startIndex, startIndex + limit);
-    
-    return {
-      success: true,
-      data: {
-        users: paginatedUsers,
-        totalCount: mockUsers.length
-      }
-    };
-
+    const token = localStorage.getItem("authToken");
+    const response = await axios.get(`http://localhost:5000/api/userManagement?page=${page}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data; // { users: [...] }
   } catch (error) {
-    return { success: false, message: 'Failed to fetch users' };
+    throw new Error(error.response?.data?.message || "Failed to fetch users");
   }
 };
+
+export const searchUsers = async (searchTerm) => {
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await axios.get(`http://localhost:5000/api/userManagement?search=${searchTerm}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data; // { users: [...] }
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Search failed");
+  }
+};
+
+
+// Add token automatically if it exists
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("authToken"); // same key as login
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Existing functions like login, getUsers, etc.
+
+// Fetch users by date range
+export const getUsersByDate = async (startDate, endDate) => {
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await api.get(`/userManagement?start=${startDate}&end=${endDate}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return { success: true, data: response.data.users };
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || "Failed to fetch users by date." };
+  }
+};
+
+// Download users
+export const downloadUsers = async () => {
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await api.get("/userManagement/download", {
+      responseType: "blob",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "users.xlsx"); // or .csv depending on backend
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    return { success: true };
+  } catch (error) {
+    console.error("Download failed:", error);
+    return { success: false, message: "Failed to download users." };
+  }
+};
+
+
+
+
+
+
 
 // Update user
 export const updateUser = async (token, userId, userData) => {
@@ -194,44 +247,6 @@ export const deleteUser = async (token, userId, phoneNumber) => {
 
 // Search users
 // Update the searchUsers function in your api.js
-export const searchUsers = async (token, searchTerm) => {
-  try {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Use the same mock data as getUsers for consistency
-    const mockUsers = Array.from({ length: 50 }, (_, i) => ({
-      id: i + 1,
-      fullName: `User ${i + 1}`,
-      phoneNumber: `+2519${String(10000000 + i).padStart(8, '0')}`, // Consistent phone numbers
-      registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
-      totalPayment: Math.floor(Math.random() * 10000),
-      isActive: Math.random() > 0.2
-    }));
-
-    // Better search logic that handles phone number formatting
-    const filteredUsers = mockUsers.filter(user => {
-      const searchLower = searchTerm.toLowerCase();
-      const nameMatch = user.fullName.toLowerCase().includes(searchLower);
-      
-      // Phone number search - remove any non-digit characters for better matching
-      const phoneDigits = user.phoneNumber.replace(/\D/g, '');
-      const searchDigits = searchTerm.replace(/\D/g, '');
-      const phoneMatch = phoneDigits.includes(searchDigits) || 
-                         user.phoneNumber.includes(searchTerm);
-      
-      return nameMatch || phoneMatch;
-    });
-    
-    return {
-      success: true,
-      data: filteredUsers
-    };
-
-  } catch (error) {
-    return { success: false, message: 'Failed to search users' };
-  }
-};
-
 
 
 

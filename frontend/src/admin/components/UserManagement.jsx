@@ -1,7 +1,8 @@
+// src/admin/components/UserManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { getUsers, updateUser, deleteUser, searchUsers } from '../services/api';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
-import Sidebar from './Sidebar'; // Import Sidebar
+import { getUsers, updateUser, deleteUser, searchUsers, getUsersByDate, downloadUsers } from '../services/api';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight, FaDownload } from 'react-icons/fa';
+import Sidebar from './Sidebar';
 import '../styles/UserManagement.css';
 
 export default function UserManagement() {
@@ -14,43 +15,61 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const usersPerPage = 6;
 
-  useEffect(() => {
-    fetchUsers();
-  }, [currentPage]);
-
-  const fetchUsers = async () => {
+  // Fetch users
+  const fetchUsers = async (page = currentPage) => {
     setLoading(true);
-    const token = localStorage.getItem('authToken');
-    const result = await getUsers(token, currentPage, usersPerPage);
-    
-    if (result.success) {
-      setUsers(result.data.users);
-      setTotalUsers(result.data.totalCount);
+    try {
+      const result = await getUsers(page);
+      setUsers(result.users || []);
+      setTotalUsers(result.totalCount || result.users.length || 0);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
+  useEffect(() => {
+    fetchUsers(currentPage);
+  }, [currentPage]);
+
+  // Search users
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
       setIsSearching(false);
-      fetchUsers();
+      fetchUsers(1);
       return;
     }
 
     setIsSearching(true);
     setLoading(true);
-    const token = localStorage.getItem('authToken');
-    const result = await searchUsers(token, searchTerm);
-    
-    if (result.success) {
-      setUsers(result.data);
+    try {
+      const result = await searchUsers(searchTerm);
+      setUsers(result.users || []);
+      setTotalUsers(result.users.length || 0);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
+
+  // Download users
+  const handleDownload = async () => {
+    try {
+      await downloadUsers(); // Backend should handle CSV or Excel download
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Edit user
   const handleEdit = (user) => {
     setEditingId(user.id);
     setEditData({
@@ -60,15 +79,15 @@ export default function UserManagement() {
   };
 
   const handleSave = async (userId) => {
-    const token = localStorage.getItem('authToken');
-    const result = await updateUser(token, userId, editData);
-    
-    if (result.success) {
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, ...editData } : user
-      ));
-      setEditingId(null);
-      setEditData({});
+    try {
+      const result = await updateUser(userId, editData);
+      if (result.success) {
+        setUsers(users.map(user => user.id === userId ? { ...user, ...editData } : user));
+        setEditingId(null);
+        setEditData({});
+      }
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -77,28 +96,31 @@ export default function UserManagement() {
     setEditData({});
   };
 
-  const handleDelete = async (userId, phoneNumber) => {
-    const token = localStorage.getItem('authToken');
-    const result = await deleteUser(token, userId, phoneNumber);
-    
-    if (result.success) {
-      setUsers(users.filter(user => user.id !== userId));
-      setTotalUsers(prev => prev - 1);
-      setDeleteConfirm(null);
+  // Delete user
+  const handleDelete = async (userId) => {
+    try {
+      const result = await deleteUser(userId);
+      if (result.success) {
+        setUsers(users.filter(user => user.id !== userId));
+        setTotalUsers(prev => prev - 1);
+        setDeleteConfirm(null);
+      }
+    } catch (error) {
+      console.error(error);
     }
   };
 
   const handleInputChange = (field, value) => {
-    setEditData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setEditData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
     setIsSearching(false);
-    fetchUsers();
+    setCurrentPage(1);
+    setStartDate('');
+    setEndDate('');
+    fetchUsers(1);
   };
 
   const totalPages = Math.ceil(totalUsers / usersPerPage);
@@ -116,6 +138,7 @@ export default function UserManagement() {
       <Sidebar />
       
       <div className="user-management-container">
+        {/* Stats */}
         <div className="stats-container">
           <div className="stat-card">
             <div className="stat-title">Total Users</div>
@@ -123,28 +146,36 @@ export default function UserManagement() {
           </div>
         </div>
 
-        <div className="search-container">
-          <div className="search-input-container">
-            <FaSearch className="search-icon" />
+        {/* Search, Date Filters, Download */}
+        <div className="search-containeru">
+          <div className="search-input-containeru">
             <input
               type="text"
-              placeholder="Search by name or phone number"
+              placeholder="Search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               className="search-input"
             />
             {searchTerm && (
-              <button onClick={handleClearSearch} className="clear-input-button">
-                ×
-              </button>
+              <button onClick={handleClearSearch} className="clear-input-button">×</button>
             )}
           </div>
-          <button onClick={handleSearch} className="search-button">
-            <FaSearch /> Search
-          </button>
+          <button onClick={handleSearch} className="search-button"><FaSearch /> Search</button>
+
+          {/* Date filters */}
+
+          <div className="date-filter-containeru">
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="date-inputu" />
+            to
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="date-inputu" />
+          </div>
+
+          {/* Download */}
+          <button onClick={handleDownload} className="download-button"><FaDownload /> Download</button>
         </div>
 
+        {/* Users Table */}
         <div className="users-table-container">
           <table className="users-table">
             <thead>
@@ -167,9 +198,7 @@ export default function UserManagement() {
                         onChange={(e) => handleInputChange('fullName', e.target.value)}
                         className="edit-input"
                       />
-                    ) : (
-                      user.fullName
-                    )}
+                    ) : user.fullName}
                   </td>
                   <td>
                     {editingId === user.id ? (
@@ -179,46 +208,20 @@ export default function UserManagement() {
                         onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                         className="edit-input"
                       />
-                    ) : (
-                      user.phoneNumber
-                    )}
+                    ) : user.phoneNumber}
                   </td>
                   <td>{new Date(user.registrationDate).toLocaleDateString()}</td>
                   <td>{user.totalPayment.toLocaleString()} ETB</td>
                   <td>
                     {editingId === user.id ? (
                       <div className="action-buttons">
-                        <button
-                          onClick={() => handleSave(user.id)}
-                          className="action-button save-button"
-                          title="Save"
-                        >
-                          <FaSave />
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="action-button cancel-button"
-                          title="Cancel"
-                        >
-                          <FaTimes />
-                        </button>
+                        <button onClick={() => handleSave(user.id)} className="action-button save-button" title="Save"><FaSave /></button>
+                        <button onClick={handleCancelEdit} className="action-button cancel-button" title="Cancel"><FaTimes /></button>
                       </div>
                     ) : (
                       <div className="action-buttons">
-                        <button
-                          onClick={() => handleEdit(user)}
-                          className="action-button edit-button"
-                          title="Edit"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(user.id)}
-                          className="action-button delete-button"
-                          title="Delete"
-                        >
-                          <FaTrash />
-                        </button>
+                        <button onClick={() => handleEdit(user)} className="action-button edit-button" title="Edit"><FaEdit /></button>
+                        <button onClick={() => setDeleteConfirm(user.id)} className="action-button delete-button" title="Delete"><FaTrash /></button>
                       </div>
                     )}
                   </td>
@@ -234,6 +237,7 @@ export default function UserManagement() {
           )}
         </div>
 
+        {/* Pagination */}
         {!isSearching && totalPages > 1 && (
           <div className="pagination">
             <button
@@ -244,9 +248,7 @@ export default function UserManagement() {
             >
               <FaArrowLeft /> Previous
             </button>
-            <span className="page-info">
-              Page {currentPage} of {totalPages}
-            </span>
+            <span className="page-info">Page {currentPage} of {totalPages}</span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
@@ -258,6 +260,7 @@ export default function UserManagement() {
           </div>
         )}
 
+        {/* Delete Confirmation Modal */}
         {deleteConfirm && (
           <div className="delete-modal">
             <div className="delete-modal-content">
@@ -265,7 +268,7 @@ export default function UserManagement() {
               <p>Are you sure you want to delete this user permanently?</p>
               <div className="delete-modal-actions">
                 <button
-                  onClick={() => handleDelete(deleteConfirm, users.find(u => u.id === deleteConfirm)?.phoneNumber)}
+                  onClick={() => handleDelete(deleteConfirm)}
                   className="confirm-delete-button"
                 >
                   Yes, Delete
@@ -280,6 +283,7 @@ export default function UserManagement() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
