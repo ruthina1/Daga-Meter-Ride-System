@@ -1,9 +1,27 @@
 // src/admin/components/StaffManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { getStaff, updateStaff, deleteStaff, searchStaff, registerStaff, getStaffByDate } from '../services/api';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight, FaPlus, FaDownload, FaEye } from 'react-icons/fa';
+import {
+  getStaff,
+  updateStaff,
+  deleteStaff,
+  searchStaff,
+  registerStaff,
+  getStaffByDate
+} from '../services/api';
+import {
+  FaEdit,
+  FaTrash,
+  FaSave,
+  FaTimes,
+  FaSearch,
+  FaArrowLeft,
+  FaArrowRight,
+  FaPlus,
+  FaDownload,
+  FaEye
+} from 'react-icons/fa';
 import Sidebar from './Sidebar';
-import '../styles/StaffManagement.css'; // keep same styles, can rename if needed
+import '../styles/StaffManagement.css';
 
 export default function StaffManagement() {
   const [staff, setStaff] = useState([]);
@@ -22,12 +40,13 @@ export default function StaffManagement() {
 
   const staffPerPage = 6;
 
-  useEffect(() => { fetchStaff(); }, [currentPage]);
+  useEffect(() => {
+    fetchStaff();
+  }, [currentPage]);
 
   const fetchStaff = async () => {
     setLoading(true);
-    const token = localStorage.getItem('authToken');
-    const result = await getStaff(token, currentPage, staffPerPage);
+    const result = await getStaff(currentPage, staffPerPage);
     if (result.success) {
       setStaff(result.data.staff);
       setTotalStaff(result.data.totalCount);
@@ -38,8 +57,7 @@ export default function StaffManagement() {
   const fetchStaffByDate = async () => {
     if (!startDate || !endDate) return;
     setLoading(true);
-    const token = localStorage.getItem('authToken');
-    const result = await getStaffByDate(token, startDate, endDate);
+    const result = await getStaffByDate(startDate, endDate);
     if (result.success) {
       setStaff(result.data);
       setIsSearching(true);
@@ -55,16 +73,8 @@ export default function StaffManagement() {
     }
     setIsSearching(true);
     setLoading(true);
-    const token = localStorage.getItem('authToken');
-    const result = await searchStaff(token, searchTerm);
+    const result = await searchStaff(searchTerm);
     let filtered = result.success ? result.data : [];
-    if (!filtered || filtered.length === 0) {
-      const allStaff = await fetchStaff();
-      filtered = allStaff.filter(member =>
-        member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.phoneNumber.includes(searchTerm)
-      );
-    }
     setStaff(filtered);
     setLoading(false);
   };
@@ -80,8 +90,7 @@ export default function StaffManagement() {
   };
 
   const handleSave = async (staffId) => {
-    const token = localStorage.getItem('authToken');
-    const result = await updateStaff(token, staffId, editData);
+    const result = await updateStaff(staffId, editData);
     if (result.success) {
       setStaff(staff.map(member =>
         member.id === staffId ? { ...member, ...editData } : member
@@ -99,8 +108,7 @@ export default function StaffManagement() {
   };
 
   const handleDelete = async (staffId) => {
-    const token = localStorage.getItem('authToken');
-    const result = await deleteStaff(token, staffId);
+    const result = await deleteStaff(staffId);
     if (result.success) {
       setStaff(staff.filter(member => member.id !== staffId));
       setTotalStaff(prev => prev - 1);
@@ -132,8 +140,7 @@ export default function StaffManagement() {
   };
 
   const handleRegister = async (formData) => {
-    const token = localStorage.getItem('authToken');
-    const result = await registerStaff(token, formData);
+    const result = await registerStaff(formData);
     if (result.success) {
       setShowRegisterForm(false);
       fetchStaff();
@@ -196,8 +203,7 @@ export default function StaffManagement() {
   return (
     <div className="dashboard-container">
       <Sidebar />
-      <div className="staff-management-container"> {/* keep same styles */}
-        
+      <div className="staff-management-container">
         {/* Stats & Search */}
         <div className="stats-container">
           <div className="stat-card">
@@ -223,30 +229,16 @@ export default function StaffManagement() {
         </div>
 
         {/* Filters & Actions */}
-       <div className="filters-container">
+        <div className="filters-container">
           <div className="date-filter-container">
             <div className="date-inputs-row">
-              <div className="date-input-group">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="date-input"
-                />
-              </div>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="date-input" />
               <label> to </label>
-              <div className="date-input-group">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="date-input"
-                />
-              </div>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="date-input" />
             </div>
           </div>
           <div className="action-buttons-container">
-            <button onClick={handleDownloadReport}  className="download-button"><FaDownload /> Download PDF</button>
+            <button onClick={handleDownloadReport} className="download-button"><FaDownload /> Download PDF</button>
             <button onClick={() => setShowRegisterForm(true)} className="new-staff-button"><FaPlus /> New Staff</button>
           </div>
         </div>
@@ -266,118 +258,81 @@ export default function StaffManagement() {
             <tbody>
               {staff.map(member => (
                 <tr key={member.id}>
-                  <td>{editingId === member.id ? <input type="text" value={editData.fullName} onChange={e => handleInputChange('fullName', e.target.value)} /> : member.fullName}</td>
-                  <td>{editingId === member.id ? <input type="text" value={editData.phoneNumber} onChange={e => handleInputChange('phoneNumber', e.target.value)} /> : member.phoneNumber}</td>
+                  <td>{editingId === member.id
+                    ? <input type="text" value={editData.fullName} onChange={e => handleInputChange('fullName', e.target.value)} />
+                    : member.fullName}</td>
+
+                  <td>{editingId === member.id
+                    ? <input type="text" value={editData.phoneNumber} onChange={e => handleInputChange('phoneNumber', e.target.value)} />
+                    : member.phoneNumber}</td>
+
                   <td>{new Date(member.registrationDate).toLocaleDateString()}</td>
+
                   <td>
                     {editingId === member.id ? (
                       <input type="file" accept="image/*" onChange={handleIdUpload} />
                     ) : member.idImage ? (
-                      
-                      
-                      <button 
-                           onClick={() => setIdPreview(member.idImage)}
-                           className="view-id-button">
-                            <FaEye /> View
+                      <button onClick={() => setIdPreview(member.idImage)} className="view-id-button">
+                        <FaEye /> View
                       </button>
-
                     ) : 'No ID'}
                   </td>
+
                   <td>
-                        <div style={{ display: 'flex', gap: '5px' }}>  {/* Added flex container */}
-                          {editingId === member.id ? (
-                            <>
-                              <button 
-                                onClick={() => handleSave(member.id)}
-                                className="action-button save-button"
-                              ><FaSave /></button>
-
-                              <button 
-                                onClick={handleCancelEdit}
-                                className="action-button cancel-button"
-                              ><FaTimes /></button>
-                            </>
-                          ) : (
-                            <>
-                              <button 
-                                onClick={() => handleEdit(member)}
-                                className="action-button edit-button"
-                              ><FaEdit /></button>
-
-                              <button 
-                                onClick={() => setDeleteConfirm(member.id)}
-                                className="action-button delete-button"
-                              ><FaTrash /></button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                      {editingId === member.id ? (
+                        <>
+                          <button onClick={() => handleSave(member.id)} className="action-button save-button"><FaSave /></button>
+                          <button onClick={handleCancelEdit} className="action-button cancel-button"><FaTimes /></button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => handleEdit(member)} className="action-button edit-button"><FaEdit /></button>
+                          <button onClick={() => setDeleteConfirm(member.id)} className="action-button delete-button"><FaTrash /></button>
+                        </>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-
-
-
         {staff.length === 0 && (
-                    <div className="no-staff">
-                      {isSearching ? 'No drivers found matching your search' : 'No staff found'}
-                    </div>
-                  )}
-                </div>
-        
-                {!isSearching && totalPages > 1 && (
-                  <div className="pagination">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="pagination-button"
-                      title="Previous page"
-                    >
-                      <FaArrowLeft /> Previous
-                    </button>
-                    <span className="page-info">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="pagination-button"
-                      title="Next page"
-                    >
-                      Next <FaArrowRight />
-                    </button>
-                  </div>
-                )}
-        
+          <div className="no-staff">
+            {isSearching ? 'No staff found matching your search' : 'No staff found'}
+          </div>
+        )}
 
-
+        {!isSearching && totalPages > 1 && (
+          <div className="pagination">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="pagination-button"
+            >
+              <FaArrowLeft /> Previous
+            </button>
+            <span className="page-info">Page {currentPage} of {totalPages}</span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="pagination-button"
+            >
+              Next <FaArrowRight />
+            </button>
+          </div>
+        )}
 
         {deleteConfirm && (
           <div className="delete-modal">
             <div className="delete-modal-content">
-
               <h3>Confirm Delete</h3>
               <p>Are you sure you want to delete this staff?</p>
-
               <div className="delete-modal-actions">
-
-                <button 
-                     onClick={() => handleDelete(deleteConfirm)}
-                     className="confirm-delete-button"
-                  >
-                      Yes, Delete
-                </button>
-
-                <button 
-                      onClick={() => setDeleteConfirm(null)}
-                      className="cancel-delete-button"
-               >
-                      Cancel
-                </button>
+                <button onClick={() => handleDelete(deleteConfirm)} className="confirm-delete-button">Yes, Delete</button>
+                <button onClick={() => setDeleteConfirm(null)} className="cancel-delete-button">Cancel</button>
               </div>
             </div>
           </div>
@@ -386,20 +341,14 @@ export default function StaffManagement() {
         {showRegisterForm && (
           <StaffRegistrationForm onClose={() => setShowRegisterForm(false)} onRegister={handleRegister} />
         )}
-
       </div>
-    
+    </div>
   );
 }
 
-// Staff Registration Form Component
+// Staff Registration Form (unchanged except token removed)
 function StaffRegistrationForm({ onClose, onRegister }) {
-  const [formData, setFormData] = useState({ 
-    fullName: '', 
-    phoneNumber: '', 
-    password: '', 
-    idImage: null 
-  });
+  const [formData, setFormData] = useState({ fullName: '', phoneNumber: '', password: '', idImage: null });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [idPreview, setIdPreview] = useState('');
@@ -417,18 +366,12 @@ function StaffRegistrationForm({ onClose, onRegister }) {
     setFormData(prev => ({ ...prev, password }));
     const strength = validatePassword(password);
     switch (strength) {
-      case 'too-short': 
-            setPasswordStrength('At least 6 characters required'); break;
-      case 'no-upper': 
-            setPasswordStrength('Add uppercase letter'); break;
-      case 'no-lower': 
-            setPasswordStrength('Add lowercase letter'); break;
-      case 'no-number': 
-            setPasswordStrength('Add number'); break;
-      case 'strong': 
-            setPasswordStrength('Strong password'); break;
-      default: 
-            setPasswordStrength('');
+      case 'too-short': setPasswordStrength('At least 6 characters required'); break;
+      case 'no-upper': setPasswordStrength('Add uppercase letter'); break;
+      case 'no-lower': setPasswordStrength('Add lowercase letter'); break;
+      case 'no-number': setPasswordStrength('Add number'); break;
+      case 'strong': setPasswordStrength('Strong password'); break;
+      default: setPasswordStrength(''); break;
     }
   };
 
@@ -457,112 +400,56 @@ function StaffRegistrationForm({ onClose, onRegister }) {
     if (!result.success) setErrors({ submit: result.message });
   };
 
-   const removeid = () => {
+  const removeId = () => {
     setIdPreview(null);
-    setFormData(prev => ({ ...prev, id: null }));
+    setFormData(prev => ({ ...prev, idImage: null }));
   };
 
   return (
     <div className="modal-overlay">
       <div className="modal-content staff-registration-modal">
-
         <div className="modal-header">
-
           <h2>Register New Staff</h2>
-
           <button onClick={onClose} className="close-button">×</button>
-
         </div>
         {errors.submit && <div className="error-message">{errors.submit}</div>}
-        <form onSubmit={handleSubmit}className="staff-registration-form">
+        <form onSubmit={handleSubmit} className="staff-registration-form">
           <div>
             <label>Full Name *</label>
-            <input 
-                  type="text" 
-                  value={formData.fullName} 
-                  onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))} 
-                  className={errors.fullName ? 'error' : ''}
-                  placeholder="Enter full name"
-            />
+            <input type="text" value={formData.fullName} onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))} className={errors.fullName ? 'error' : ''} placeholder="Enter full name" />
             {errors.fullName && <span className="error-text">{errors.fullName}</span>}
           </div>
           <div>
             <label>Phone Number *</label>
-            <input 
-                   type="text" 
-                   value={formData.phoneNumber} 
-                   onChange={e => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))} 
-                   className={errors.phoneNumber ? 'error' : ''}
-                   placeholder="+251900000000"
-             />
+            <input type="text" value={formData.phoneNumber} onChange={e => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))} className={errors.phoneNumber ? 'error' : ''} placeholder="+251900000000" />
             {errors.phoneNumber && <span className="error-text">{errors.phoneNumber}</span>}
           </div>
           <div>
             <label>Password *</label>
-            <input 
-                   type="password" 
-                   value={formData.password} 
-                   onChange={e => handlePasswordChange(e.target.value)} 
-                   className={errors.password ? 'error' : ''}
-                   placeholder="At least 6 characters"
-            />
-             {passwordStrength && (
-                <span className={`password-strength ${
-                  passwordStrength === 'Strong password' ? 'strong' : 'weak'
-                }`}>
-                  {passwordStrength}
-                </span>
-              )}
-
+            <input type="password" value={formData.password} onChange={e => handlePasswordChange(e.target.value)} className={errors.password ? 'error' : ''} placeholder="At least 6 characters" />
+            {passwordStrength && <span className={`password-strength ${passwordStrength === 'Strong password' ? 'strong' : 'weak'}`}>{passwordStrength}</span>}
             {errors.password && <span className="error-text">{errors.password}</span>}
           </div>
-          
           <div className="form-group">
-
             <label>ID *</label>
-
             <div className="id-upload-area">
-
               {idPreview ? (
                 <div className="id-preview-container">
                   <img src={idPreview} alt="ID preview" className="id-preview-large" />
-                  <button type="button" onClick={removeid} className="remove-id-button">
-                    Remove
-                  </button>
+                  <button type="button" onClick={removeId} className="remove-id-button">Remove</button>
                 </div>
               ) : (
                 <div className="id-upload-placeholder">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleIdUpload}
-                    className="id-input-hidden"
-                    id="id-upload"
-                  />
-                  <label htmlFor="id-upload" className="id-upload-label">
-                    <FaPlus className="upload-icon" />
-                  </label>
+                  <input type="file" accept="image/*" onChange={handleIdUpload} className="id-input-hidden" id="id-upload" />
+                  <label htmlFor="id-upload" className="id-upload-label"><FaPlus className="upload-icon" /></label>
                 </div>
               )}
-              {errors.id && <span className="error-text">{errors.id}</span>}
+              {errors.idImage && <span className="error-text">{errors.idImage}</span>}
             </div>
           </div>
-
           <div>
-            <button 
-                     type="button" 
-                     onClick={onClose} 
-                     className="cancel-button"
-            >
-                      Cancel
-            </button>
-
-            <button 
-                      type="submit" 
-                      className="submit-button"
-                      disabled={loading}>{loading ? 'Registering...' : 'Register Staff'}
-                    
-                      </button>
+            <button type="button" onClick={onClose} className="cancel-button">Cancel</button>
+            <button type="submit" className="submit-button" disabled={loading}>{loading ? 'Registering...' : 'Register Staff'}</button>
           </div>
         </form>
       </div>

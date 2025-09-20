@@ -381,127 +381,119 @@ export const registerDriver = async (token, driverData) => {
 
 
 
+;
 
 
-// Staff API functions
-const generateMockStaff = () => {
-  return Array.from({ length: 50 }, (_, i) => ({
-    id: i + 1,
-    fullName: `Staff ${i + 1}`,
-    phoneNumber: `+2519${String(90000000 + i).padStart(8, '0')}`,
-    registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
-    idImage: `https://example.com/id-images/staff-${i + 1}.jpg`,
-    isActive: Math.random() > 0.2
-  }));
-};
 
-// Get staff with pagination
+// here is the staff
+
+const API_URL = "http://localhost:5000/api"; // <-- add this line
+
 export const getStaff = async (token, page = 1, limit = 6) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const mockStaff = generateMockStaff();
-    const startIndex = (page - 1) * limit;
-    const paginatedStaff = mockStaff.slice(startIndex, startIndex + limit);
-    
-    return {
-      success: true,
-      data: {
-        staff: paginatedStaff,
-        totalCount: mockStaff.length
-      }
-    };
-  } catch (error) {
-    return { success: false, message: 'Failed to fetch staff' };
-  }
-};
-
-// Search staff
-export const searchStaff = async (token, searchTerm) => {
-  try {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const mockStaff = generateMockStaff();
-    const filteredStaff = mockStaff.filter(staff => {
-      const searchLower = searchTerm.toLowerCase();
-      const nameMatch = staff.fullName.toLowerCase().includes(searchLower);
-      const phoneMatch = staff.phoneNumber.includes(searchTerm);
-      return nameMatch || phoneMatch;
+    const res = await fetch(`${API_URL}/staffManagement?page=${page}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
-    
-    return {
-      success: true,
-      data: filteredStaff
-    };
-  } catch (error) {
-    return { success: false, message: 'Failed to search staff' };
+    const data = await res.json();
+    // normalize response so front-end always receives totalStaff
+    if (page === 1) {
+      return {
+        success: true,
+        data: {
+          staff: data.staff,
+          totalCount: data.totalStaff,
+        },
+      };
+    } else {
+      return {
+        success: true,
+        data: {
+          staff: data.staff,
+          totalCount: null, // totalCount is already known from first page
+        },
+      };
+    }
+  } catch (err) {
+    console.error(err);
+    return { success: false, message: err.message };
   }
 };
 
-// Get staff by date range
+// Search staff by name or phone
+export const searchStaff = async (token, query) => {
+  try {
+    const res = await fetch(`${API_URL}/staffManagement/search?q=${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+};
+
+// Get staff by registration date range
 export const getStaffByDate = async (token, startDate, endDate) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const mockStaff = generateMockStaff();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    const filteredStaff = mockStaff.filter(staff => {
-      const regDate = new Date(staff.registrationDate);
-      return regDate >= start && regDate <= end;
+    const res = await fetch(`${API_URL}/staffManagement?start=${startDate}&end=${endDate}`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    
-    return {
-      success: true,
-      data: filteredStaff
-    };
-  } catch (error) {
-    return { success: false, message: 'Failed to filter staff by date' };
+    const data = await res.json();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, message: err.message };
   }
 };
 
 // Update staff
-export const updateStaff = async (token, staffId, staffData) => {
+export const updateStaff = async (token, staffId, updateData) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    console.log('Updating staff:', staffId, staffData);
-    return { success: true, message: 'Staff updated successfully' };
-  } catch (error) {
-    return { success: false, message: 'Failed to update staff' };
+    const formData = new FormData();
+    for (let key in updateData) formData.append(key, updateData[key]);
+    const res = await fetch(`${API_URL}/staffManagement/${staffId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { success: false, message: err.message };
   }
 };
 
 // Delete staff
-export const deleteStaff = async (token, staffId, phoneNumber) => {
+export const deleteStaff = async (token, staffId) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    console.log('Deleting staff:', staffId, 'Phone:', phoneNumber);
-    return { success: true, message: 'Staff deleted successfully' };
-  } catch (error) {
-    return { success: false, message: 'Failed to delete staff' };
+    const res = await fetch(`${API_URL}/staffManagement/${staffId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { success: false, message: err.message };
   }
 };
 
 // Register new staff
 export const registerStaff = async (token, staffData) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Validate password
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
-    if (!passwordRegex.test(staffData.password)) {
-      return { 
-        success: false, 
-        message: 'Password must be at least 6 characters with 1 uppercase, 1 lowercase, and 1 number' 
-      };
-    }
-    
-    console.log('Registering new staff:', staffData);
-    return { success: true, message: 'Staff registered successfully' };
-  } catch (error) {
-    return { success: false, message: 'Failed to register staff' };
+    const formData = new FormData();
+    for (let key in staffData) formData.append(key, staffData[key]);
+    const res = await fetch(`${API_URL}/staffManagement`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { success: false, message: err.message };
   }
 };

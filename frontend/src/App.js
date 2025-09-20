@@ -9,6 +9,7 @@ import UserManagement from './admin/components/UserManagement';
 import DriverManagement from './admin/components/DriverManagement';
 import './App.css';
 import StaffManagement from './admin/components/StaffManagement';
+import CarManagement from './admin/components/CarManagement';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         } 
       />
       <Route path="/dashboard" element={<AdminDashboard />} />
+       <Route path="/admin/cars" element={<CarManagement />} />
 
       <Route 
         path="/admin/users" 
