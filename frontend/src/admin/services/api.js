@@ -264,25 +264,27 @@ const generateMockDrivers = () => {
 };
 
 // Get drivers with pagination
-export const getDrivers = async (token, page = 1, limit = 6) => {
+
+
+
+
+
+// src/services/api.js
+
+// here is accepting drivers table
+export const getDrivers = async (page = 1, limit = 10) => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const mockDrivers = generateMockDrivers();
-    const startIndex = (page - 1) * limit;
-    const paginatedDrivers = mockDrivers.slice(startIndex, startIndex + limit);
-    
-    return {
-      success: true,
-      data: {
-        drivers: paginatedDrivers,
-        totalCount: mockDrivers.length
-      }
-    };
+    const token = localStorage.getItem("authToken");
+    const response = await api.get(`/driverManagement?page=${page}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return { success: true, data: response.data };
   } catch (error) {
-    return { success: false, message: 'Failed to fetch drivers' };
+    return { success: false, message: error.response?.data?.message || "Failed to fetch drivers." };
   }
 };
+
+
 
 // Search drivers
 export const searchDrivers = async (token, searchTerm) => {

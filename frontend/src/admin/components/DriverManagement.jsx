@@ -9,7 +9,7 @@ import '../styles/DriverManagement.css';
 
 export default function DriverManagement() {
   const [drivers, setDrivers] = useState([]);
-  const [downloadDriver, setDownloadDriver] = useState('');
+  const [reportDriver, setReportDriver] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -29,31 +29,57 @@ export default function DriverManagement() {
     fetchDrivers();
   }, [currentPage]);
 
-  const fetchDrivers = async () => {
-    setLoading(true);
+ const fetchDrivers = async () => {
+  setLoading(true);
+
+  try {
     const token = localStorage.getItem('authToken');
-    const result = await getDrivers(token, currentPage, driversPerPage);
-    
-    if (result.success) {
-      setDrivers(result.data.drivers);
-      setTotalDrivers(result.data.totalCount);
+    // Backend call with page query
+    const response = await fetch(`/api/driverManagement?page=${currentPage}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const result = await response.json();
+
+    if (response.ok) {
+      setDrivers(result.drivers || []);
+      // Only set totalDrivers on first page or if totalDrivers exists
+      if (result.totalDrivers !== undefined) {
+        setTotalDrivers(result.totalDrivers);
+      }
+    } else {
+      console.error("Error fetching drivers:", result.message || "Unknown error");
     }
-    setLoading(false);
-  };
+  } catch (error) {
+    console.error("Fetch drivers failed:", error);
+  }
+
+  setLoading(false);
+};
 
   const fetchDriversByDate = async () => {
-    if (!startDate || !endDate) return;
-    
-    setLoading(true);
+  if (!startDate || !endDate) return;
+
+  setLoading(true);
+  try {
     const token = localStorage.getItem('authToken');
-    const result = await getDriversByDate(token, startDate, endDate);
-    
-    if (result.success) {
-      setDrivers(result.data);
+    const response = await fetch(
+      `/api/driverManagement?startDate=${startDate}&endDate=${endDate}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const result = await response.json();
+
+    if (response.ok) {
+      setDrivers(result.drivers || []);
       setIsSearching(true);
+    } else {
+      console.error("Error fetching drivers by date:", result.message || "Unknown error");
     }
-    setLoading(false);
-  };
+  } catch (error) {
+    console.error("Fetch drivers by date failed:", error);
+  }
+  setLoading(false);
+};
+
 
 const handleSearch = async () => {
   if (!searchTerm.trim()) {
