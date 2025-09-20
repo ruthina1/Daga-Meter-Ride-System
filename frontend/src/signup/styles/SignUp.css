@@ -1,0 +1,105 @@
+.signup-form {
+    max-width: 400px;
+    margin: 0px auto;
+    padding: 32px 24px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.signup-form h1 {
+    text-align: center;
+    font-size: 2.3rem;
+    font-weight: 700;
+    color: #08B783;
+    letter-spacing: 1px;
+    animation: fadeIn 1.2s;
+}
+
+.signup-form input,
+.signup-form select {
+    display: block;
+    padding: 1rem 1.2rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    background: #fff;
+    width: 100%;
+    margin-bottom: 0.5rem;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(8, 183, 131, 0.04);
+}
+
+.signup-form input:focus,
+.signup-form select:focus {
+    border-color: #08B783;
+    outline: none;
+    background: #fff;
+}
+
+.signup-form button {
+    padding: 12px;
+    background: #08B783;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.signup-form button:hover {
+    background: #037754;
+}
+
+.signup-form .country-phone {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.signup-form select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: #fff url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%2308B783' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 1.2rem center/1.2em;
+    padding-right: 1.5rem; 
+}
+
+/* Optional: Make ward dropdown stand out */
+.signup-form select[name="ward"] {
+    border-color: #08B783;
+    background-color: #f6fffa;
+}
+
+/* Fix spacing in country-phone box */
+.signup-form .country-phone select {
+    min-width: 90px;
+    padding-right: 2.5rem;
+}
+form p{
+    color: rgb(201, 200, 200);
+}
+
+.privacy {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.privacy input{
+    width: 10%;
+}
+.privacy label {
+    width: 80%;
+    font-size: 14px; 
+    line-height: 1.2;
+}
+
+
+

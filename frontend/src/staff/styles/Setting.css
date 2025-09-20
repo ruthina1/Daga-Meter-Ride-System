@@ -1,0 +1,46 @@
+.setting{
+    display: flex;
+    flex-direction: column;
+    background: white;
+    height: 75vh;
+    width: 90%;
+    justify-content: center;
+    align-items: center;
+    padding-left: 3%;
+}
+.setting label{
+    color: #1f2937;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    padding: 0.875rem 1rem;
+    padding-left: 3%;
+    align-self: flex-start;
+}
+.setting ul{
+    list-style: none;
+}
+.setting li{
+    border-radius: 8px;
+    padding: 0.875rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: #fff;
+    width: 70%;
+    box-sizing: border-box;
+    margin-bottom: 1%;
+    outline: none;
+    border-color: #08B783;
+    font-family:'Segoe UI', 'Roboto', sans-serif;
+}
+
+.setting li:focus {
+    outline: none;
+    border-color: #08B783;
+    box-shadow: 0 0 0 3px rgba(8, 183, 131, 0.1);
+}
+.lists{
+    width: 100%;
+}

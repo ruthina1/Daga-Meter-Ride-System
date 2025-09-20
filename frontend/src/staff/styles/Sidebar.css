@@ -1,0 +1,49 @@
+.side-bar{
+    position: fixed; 
+    top: 0vh;          
+    right: 0;             
+    width: 20%;           
+    height: 100vh;         
+    padding-top: 3%;
+    border: 1px solid #ccc;
+    border-bottom-left-radius: 80px;
+    border-top-left-radius: 80px;
+    background-color: #ffffff;
+    z-index: 100;        
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1); 
+}
+.side-bar img{
+    width: 30%;
+    height: 10%;
+    border-radius: 50%;
+}
+.profile{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.side-item{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 30px;
+    cursor: pointer;
+    height: 8vh;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  cursor: pointer;
+  margin-left: 20px;
+}
+
+.back-icon {
+  margin-right: 8px;
+}
+
+.back-button p {
+  margin: 0;
+  font-weight: bold;
+}

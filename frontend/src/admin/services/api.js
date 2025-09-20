@@ -1,0 +1,501 @@
+
+export const login = async (credentials) => {
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  if (credentials.username === 'admin' && credentials.password === 'password') {
+    return { 
+      success: true, 
+      token: 'mock-jwt-token',
+      user: { name: 'Admin User' }
+    };
+  } else {
+    return { success: false, message: 'Invalid credentials' };
+  }
+};
+
+
+
+// getDashboardData function to accept timeRange parameter
+// In api.js - update the getDashboardData function
+// In api.js - ensure consistent data structure
+// src/admin/services/api.js
+export const getDashboardData = async (token, timeRange = '7days') => {
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  if (token === 'mock-jwt-token') {
+    let earningsData;
+    
+    switch(timeRange) {
+      case '7days':
+        earningsData = {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          data: [1200, 1900, 1500, 2100, 1800, 2500, 2200]
+        };
+        break;
+      case '30days':
+        earningsData = {
+          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+          data: [8500, 10200, 9800, 11200]
+        };
+        break;
+      case '3months':
+        earningsData = {
+          labels: ['Month 1', 'Month 2', 'Month 3'],
+          data: [32500, 38200, 41500]
+        };
+        break;
+      case '12months':
+      default:
+        earningsData = {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          data: [85000, 102000, 98000, 112000, 125000, 115000, 135000, 140000, 130000, 145000, 150000, 160000]
+        };
+    }
+    
+    // Return consistent data - both showing the same passenger/driver counts
+    return {
+      success: true,
+      data: {
+        totals: {
+          earning: 589909,
+          passenger: 89900,   // Total passengers
+          driver: 500,        // Total drivers
+          cars: 120
+        },
+        earningsData: earningsData,
+        summary: {
+          passengers: 89900,  // Same as totals.passenger
+          drivers: 500        // Same as totals.driver
+        }
+      }
+    };
+  } else {
+    return { success: false, message: 'Invalid token' };
+  }
+};
+
+// Also update the signIn function to return the same consistent structure
+export const signIn = async (credentials) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    if (credentials.username === 'admin' && credentials.password === 'password') {
+      return {
+        success: true,
+        data: {
+          token: 'mock-jwt-token',
+          user: { name: 'Admin User' },
+          dashboardData: {
+            totals: {
+              earning: 589909,    // Same values as getDashboardData
+              passenger: 89900,   // Same values as getDashboardData
+              driver: 500,        // Same values as getDashboardData
+              cars: 120           // Same values as getDashboardData
+            },
+            earningsData: {
+              labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+              data: [1200, 1900, 1500, 2100, 1800, 2500, 2200]
+            },
+            summary: {
+              passengers: 3740,   // Same values as getDashboardData
+              drivers: 1680       // Same values as getDashboardData
+            }
+          }
+        }
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Invalid username or password'
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Network error. Please try again.'
+    };
+  }
+};
+
+
+
+// Get users with pagination
+export const getUsers = async (token, page = 1, limit = 6) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Mock data with consistent phone numbers
+    const mockUsers = Array.from({ length: 50 }, (_, i) => ({
+      id: i + 1,
+      fullName: `User ${i + 1}`,
+      phoneNumber: `+2519${String(10000000 + i).padStart(8, '0')}`, // Consistent phone numbers
+      registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
+      totalPayment: Math.floor(Math.random() * 10000),
+      isActive: Math.random() > 0.2
+    }));
+
+    const startIndex = (page - 1) * limit;
+    const paginatedUsers = mockUsers.slice(startIndex, startIndex + limit);
+    
+    return {
+      success: true,
+      data: {
+        users: paginatedUsers,
+        totalCount: mockUsers.length
+      }
+    };
+
+  } catch (error) {
+    return { success: false, message: 'Failed to fetch users' };
+  }
+};
+
+// Update user
+export const updateUser = async (token, userId, userData) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Mock implementation
+    console.log('Updating user:', userId, userData);
+    
+    return { success: true, message: 'User updated successfully' };
+
+    /* Actual API implementation:
+    const response = await fetch(`http://your-backend/api/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(userData)
+    });
+    return await response.json();
+    */
+  } catch (error) {
+    return { success: false, message: 'Failed to update user' };
+  }
+};
+
+// Delete user
+export const deleteUser = async (token, userId, phoneNumber) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Mock implementation
+    console.log('Deleting user:', userId, 'Phone:', phoneNumber);
+    
+    return { success: true, message: 'User deleted successfully' };
+
+    /* Actual API implementation:
+    const response = await fetch(`http://your-backend/api/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ phoneNumber })
+    });
+    return await response.json();
+    */
+  } catch (error) {
+    return { success: false, message: 'Failed to delete user' };
+  }
+};
+
+// Search users
+// Update the searchUsers function in your api.js
+export const searchUsers = async (token, searchTerm) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Use the same mock data as getUsers for consistency
+    const mockUsers = Array.from({ length: 50 }, (_, i) => ({
+      id: i + 1,
+      fullName: `User ${i + 1}`,
+      phoneNumber: `+2519${String(10000000 + i).padStart(8, '0')}`, // Consistent phone numbers
+      registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
+      totalPayment: Math.floor(Math.random() * 10000),
+      isActive: Math.random() > 0.2
+    }));
+
+    // Better search logic that handles phone number formatting
+    const filteredUsers = mockUsers.filter(user => {
+      const searchLower = searchTerm.toLowerCase();
+      const nameMatch = user.fullName.toLowerCase().includes(searchLower);
+      
+      // Phone number search - remove any non-digit characters for better matching
+      const phoneDigits = user.phoneNumber.replace(/\D/g, '');
+      const searchDigits = searchTerm.replace(/\D/g, '');
+      const phoneMatch = phoneDigits.includes(searchDigits) || 
+                         user.phoneNumber.includes(searchTerm);
+      
+      return nameMatch || phoneMatch;
+    });
+    
+    return {
+      success: true,
+      data: filteredUsers
+    };
+
+  } catch (error) {
+    return { success: false, message: 'Failed to search users' };
+  }
+};
+
+
+
+
+// Generate consistent mock data for drivers
+const generateMockDrivers = () => {
+  return Array.from({ length: 50 }, (_, i) => ({
+    id: i + 1,
+    fullName: `Driver ${i + 1}`,
+    phoneNumber: `+2519${String(90000000 + i).padStart(8, '0')}`,
+    plateNumber: `AA${String(i + 1).padStart(3, '0')}BB`,
+    registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
+    license: `https://example.com/licenses/license-${i + 1}.jpg`,
+    isActive: Math.random() > 0.3
+  }));
+};
+
+// Get drivers with pagination
+export const getDrivers = async (token, page = 1, limit = 6) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const mockDrivers = generateMockDrivers();
+    const startIndex = (page - 1) * limit;
+    const paginatedDrivers = mockDrivers.slice(startIndex, startIndex + limit);
+    
+    return {
+      success: true,
+      data: {
+        drivers: paginatedDrivers,
+        totalCount: mockDrivers.length
+      }
+    };
+  } catch (error) {
+    return { success: false, message: 'Failed to fetch drivers' };
+  }
+};
+
+// Search drivers
+export const searchDrivers = async (token, searchTerm) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const mockDrivers = generateMockDrivers();
+    
+    const filteredDrivers = mockDrivers.filter(driver => {
+      const searchLower = searchTerm.toLowerCase();
+      const nameMatch = driver.fullName.toLowerCase().includes(searchLower);
+      const phoneMatch = driver.phoneNumber.includes(searchTerm);
+      const plateMatch = driver.plateNumber.toLowerCase().includes(searchLower);
+      
+      return nameMatch || phoneMatch || plateMatch;
+    });
+    
+    return {
+      success: true,
+      data: filteredDrivers
+    };
+  } catch (error) {
+    return { success: false, message: 'Failed to search drivers' };
+  }
+};
+
+// Get drivers by date range
+export const getDriversByDate = async (token, startDate, endDate) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    const mockDrivers = generateMockDrivers();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const filteredDrivers = mockDrivers.filter(driver => {
+      const regDate = new Date(driver.registrationDate);
+      return regDate >= start && regDate <= end;
+    });
+    
+    return {
+      success: true,
+      data: filteredDrivers
+    };
+  } catch (error) {
+    return { success: false, message: 'Failed to filter drivers by date' };
+  }
+};
+
+// Update driver
+export const updateDriver = async (token, driverId, driverData) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log('Updating driver:', driverId, driverData);
+    return { success: true, message: 'Driver updated successfully' };
+  } catch (error) {
+    return { success: false, message: 'Failed to update driver' };
+  }
+};
+
+// Delete driver
+export const deleteDriver = async (token, driverId, phoneNumber) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log('Deleting driver:', driverId, 'Phone:', phoneNumber);
+    return { success: true, message: 'Driver deleted successfully' };
+  } catch (error) {
+    return { success: false, message: 'Failed to delete driver' };
+  }
+};
+
+// Register new driver
+export const registerDriver = async (token, driverData) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Validate password
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+    if (!passwordRegex.test(driverData.password)) {
+      return { 
+        success: false, 
+        message: 'Password must be at least 6 characters with 1 uppercase, 1 lowercase, and 1 number' 
+      };
+    }
+    
+    console.log('Registering new driver:', driverData);
+    return { success: true, message: 'Driver registered successfully' };
+  } catch (error) {
+    return { success: false, message: 'Failed to register driver' };
+  }
+};
+
+
+
+
+
+// Staff API functions
+const generateMockStaff = () => {
+  return Array.from({ length: 50 }, (_, i) => ({
+    id: i + 1,
+    fullName: `Staff ${i + 1}`,
+    phoneNumber: `+2519${String(90000000 + i).padStart(8, '0')}`,
+    registrationDate: new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000)).toISOString(),
+    idImage: `https://example.com/id-images/staff-${i + 1}.jpg`,
+    isActive: Math.random() > 0.2
+  }));
+};
+
+// Get staff with pagination
+export const getStaff = async (token, page = 1, limit = 6) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const mockStaff = generateMockStaff();
+    const startIndex = (page - 1) * limit;
+    const paginatedStaff = mockStaff.slice(startIndex, startIndex + limit);
+    
+    return {
+      success: true,
+      data: {
+        staff: paginatedStaff,
+        totalCount: mockStaff.length
+      }
+    };
+  } catch (error) {
+    return { success: false, message: 'Failed to fetch staff' };
+  }
+};
+
+// Search staff
+export const searchStaff = async (token, searchTerm) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const mockStaff = generateMockStaff();
+    const filteredStaff = mockStaff.filter(staff => {
+      const searchLower = searchTerm.toLowerCase();
+      const nameMatch = staff.fullName.toLowerCase().includes(searchLower);
+      const phoneMatch = staff.phoneNumber.includes(searchTerm);
+      return nameMatch || phoneMatch;
+    });
+    
+    return {
+      success: true,
+      data: filteredStaff
+    };
+  } catch (error) {
+    return { success: false, message: 'Failed to search staff' };
+  }
+};
+
+// Get staff by date range
+export const getStaffByDate = async (token, startDate, endDate) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    const mockStaff = generateMockStaff();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const filteredStaff = mockStaff.filter(staff => {
+      const regDate = new Date(staff.registrationDate);
+      return regDate >= start && regDate <= end;
+    });
+    
+    return {
+      success: true,
+      data: filteredStaff
+    };
+  } catch (error) {
+    return { success: false, message: 'Failed to filter staff by date' };
+  }
+};
+
+// Update staff
+export const updateStaff = async (token, staffId, staffData) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log('Updating staff:', staffId, staffData);
+    return { success: true, message: 'Staff updated successfully' };
+  } catch (error) {
+    return { success: false, message: 'Failed to update staff' };
+  }
+};
+
+// Delete staff
+export const deleteStaff = async (token, staffId, phoneNumber) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log('Deleting staff:', staffId, 'Phone:', phoneNumber);
+    return { success: true, message: 'Staff deleted successfully' };
+  } catch (error) {
+    return { success: false, message: 'Failed to delete staff' };
+  }
+};
+
+// Register new staff
+export const registerStaff = async (token, staffData) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Validate password
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+    if (!passwordRegex.test(staffData.password)) {
+      return { 
+        success: false, 
+        message: 'Password must be at least 6 characters with 1 uppercase, 1 lowercase, and 1 number' 
+      };
+    }
+    
+    console.log('Registering new staff:', staffData);
+    return { success: true, message: 'Staff registered successfully' };
+  } catch (error) {
+    return { success: false, message: 'Failed to register staff' };
+  }
+};
