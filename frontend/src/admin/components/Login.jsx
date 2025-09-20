@@ -1,25 +1,38 @@
-import React, { useState } from 'react';
-import { login } from '../services/api';
-import '../styles/Login.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom"; // ✅ for navigation
+import { login } from "../services/api";
+import "../styles/Login.css";
 
-export default function Login ({ onLogin })  {
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
+export default function Login({ onLogin }) {
+  const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     const result = await login(credentials);
-    
+    console.log("Login API result:", result);
+
     if (result.success) {
-      onLogin(result.token, result.user);
+      // save token for ProtectedRoute
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("admin", JSON.stringify(result.user)); // backend sends admin object
+
+      // call parent handler if needed
+      if (onLogin) {
+        onLogin(result.token, result.user);
+      }
+
+      // ✅ navigate to dashboard (your App.js route)
+      navigate("/dashboard");
     } else {
       setError(result.message);
     }
-    
+
     setLoading(false);
   };
 
@@ -34,7 +47,9 @@ export default function Login ({ onLogin })  {
             <input
               type="text"
               value={credentials.username}
-              onChange={(e) => setCredentials({...credentials, username: e.target.value})}
+              onChange={(e) =>
+                setCredentials({ ...credentials, username: e.target.value })
+              }
               required
             />
           </div>
@@ -43,23 +58,17 @@ export default function Login ({ onLogin })  {
             <input
               type="password"
               value={credentials.password}
-              onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+              onChange={(e) =>
+                setCredentials({ ...credentials, password: e.target.value })
+              }
               required
             />
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="login-button"
-          >
-            {loading ? 'Logging in...' : 'Login'}
+          <button type="submit" disabled={loading} className="login-button">
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-        <p className="login-hint">
-          Use username: <strong>admin</strong> and password: <strong>password</strong>
-        </p>
       </div>
     </div>
   );
-};
-
+}

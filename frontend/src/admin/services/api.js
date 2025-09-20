@@ -1,79 +1,68 @@
+// login
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: "http://localhost:5000/api",
+  headers: { "Content-Type": "application/json" },
+});
+
+// Add token automatically if it exists
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("authToken"); // use same key as AdminDashboard
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 export const login = async (credentials) => {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  if (credentials.username === 'admin' && credentials.password === 'password') {
-    return { 
-      success: true, 
-      token: 'mock-jwt-token',
-      user: { name: 'Admin User' }
-    };
-  } else {
-    return { success: false, message: 'Invalid credentials' };
-  }
-};
+  try {
+    const response = await api.post("/admin/login", credentials);
 
-
-
-// getDashboardData function to accept timeRange parameter
-// In api.js - update the getDashboardData function
-// In api.js - ensure consistent data structure
-// src/admin/services/api.js
-export const getDashboardData = async (token, timeRange = '7days') => {
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  if (token === 'mock-jwt-token') {
-    let earningsData;
-    
-    switch(timeRange) {
-      case '7days':
-        earningsData = {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          data: [1200, 1900, 1500, 2100, 1800, 2500, 2200]
-        };
-        break;
-      case '30days':
-        earningsData = {
-          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-          data: [8500, 10200, 9800, 11200]
-        };
-        break;
-      case '3months':
-        earningsData = {
-          labels: ['Month 1', 'Month 2', 'Month 3'],
-          data: [32500, 38200, 41500]
-        };
-        break;
-      case '12months':
-      default:
-        earningsData = {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-          data: [85000, 102000, 98000, 112000, 125000, 115000, 135000, 140000, 130000, 145000, 150000, 160000]
-        };
-    }
-    
-    // Return consistent data - both showing the same passenger/driver counts
     return {
       success: true,
-      data: {
-        totals: {
-          earning: 589909,
-          passenger: 89900,   // Total passengers
-          driver: 500,        // Total drivers
-          cars: 120
-        },
-        earningsData: earningsData,
-        summary: {
-          passengers: 89900,  // Same as totals.passenger
-          drivers: 500        // Same as totals.driver
-        }
-      }
+      token: response.data.token,
+      user: response.data.admin, // backend sends dashboard data along with admin info
     };
-  } else {
-    return { success: false, message: 'Invalid token' };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || "Server error. Please try again.",
+    };
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Also update the signIn function to return the same consistent structure
 export const signIn = async (credentials) => {

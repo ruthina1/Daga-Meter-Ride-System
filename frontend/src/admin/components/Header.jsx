@@ -7,10 +7,11 @@ export default function Header({ user, onLogout }) {
     <div className="header">
       <h1>Admin Dashboard</h1>
       <div className="user-info">
-        <div className="user-avatar">{user.name.charAt(0)}</div>
-        <span>{user.name}</span>
-        <button onClick={onLogout} className="logout-button">Logout</button>
-      </div>
+        <div className="user-avatar">{(user?.username || "A").charAt(0).toUpperCase()}</div>
+          <span>{user?.username || "Admin"}</span>
+          <button onClick={onLogout} className="logout-button">Logout</button>
+        </div>
+
     </div>
   );
 };

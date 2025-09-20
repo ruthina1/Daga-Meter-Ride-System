@@ -25,19 +25,16 @@ export default function AdminDashboard() {
     localStorage.setItem('userData', JSON.stringify(userData));
     setIsLoggedIn(true);
     setUser(userData);
-    navigate('/admin'); // Redirect to admin dashboard
+    navigate('/dashboard'); // ✅ fixed: correct dashboard route
   };
   
-// In your Dashboard component, make sure logout redirects to login
-const handleLogout = () => {
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('userData');
-  window.location.href = '/login'; // This ensures a full page reload
-};
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    window.location.href = '/login';
+  };
   
-  // This component should only render the Dashboard if logged in
-  // The ProtectedRoute will handle redirecting to login if not authenticated
   return isLoggedIn ? (
     <Dashboard user={user} onLogout={handleLogout} />
-  ) : null; // Or a loading spinner
+  ) : null;
 };
