@@ -20,6 +20,10 @@
   grid-template-columns: 2fr 1fr;
   gap: 20px;
 }
+.chart-title{
+  margin-bottom: 4%;
+  margin-left: 2%;
+}
 
 .loading-container {
   display: flex;

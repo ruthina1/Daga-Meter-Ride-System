@@ -25,20 +25,23 @@ export default function Dashboard({ user, onLogout }) {
     );
   }
 
-  // Use `user` directly instead of `dashboardData`
-  const dashboardData = {
-    totals: {
-      earning: user.TotalEarning,
-      passenger: user.TotalUsers,
-      driver: user.TotalDrivers,
-      cars: user.TotalCars || 0, // fallback if TotalCars doesn't exist
-    },
-    summary: {
-      passengers: user.TotalUsers,
-      drivers: user.TotalDrivers,
-    },
-    earningsData: user.earningsData || [], // optional if you track earnings chart
-  };
+
+
+const dashboardData = {
+  totals: {
+    earning: user.TotalEarning ?? 0,
+    passenger: user.TotalUsers ?? 0,
+    driver: user.TotalDrivers ?? 0,
+    cars: user.TotalCars ?? 0,
+  },
+  summary: {
+    passengersSelf: (user.TotalUsers ?? 0) - (user.NonAccUsers ?? 0), // self registered
+    passengersStaff: user.NonAccUsers ?? 0,                          // staff registered
+    drivers: user.TotalDrivers ?? 0,
+  },
+  earningsData: user.earningsData || [],
+};
+
 
   return (
     <div className="dashboard-container">
@@ -61,23 +64,29 @@ export default function Dashboard({ user, onLogout }) {
           />
 
           <div className="chart-card">
+             <div className="chart-title">Quick Status</div>
             <div className="chart-header">
-              <div className="chart-title">Quick Stats</div>
-            </div>
-            <div className="summary-cards">
-              <SummaryCard 
-                icon="person" 
-                value={dashboardData.summary.passengers} 
-                label="Total Passengers"
-                color={{ bg: '#e3f2fd', fg: '#1565c0' }} 
-              />
-              <SummaryCard 
-                icon="directions_car" 
-                value={dashboardData.summary.drivers} 
-                label="Total Drivers"
-                color={{ bg: '#e8f5e9', fg: '#2e7d32' }} 
-              />
-            </div>
+                <div className="summary-cards">
+                    <SummaryCard 
+                      icon="person" 
+                      value={dashboardData.summary.passengersSelf} 
+                      label="Self-Registered Passengers"
+                      color={{ bg: '#e3f2fd', fg: '#1565c0' }} 
+                    />
+                    <SummaryCard 
+                      icon="person" 
+                      value={dashboardData.summary.passengersStaff} 
+                      label="Staff-Registered Passengers"
+                      color={{ bg: '#ede7f6', fg: '#4527a0' }} 
+                    />
+                    <SummaryCard 
+                      icon="directions_car" 
+                      value={dashboardData.summary.drivers} 
+                      label="Total Drivers"
+                      color={{ bg: '#e8f5e9', fg: '#2e7d32' }} 
+                    />
+               </div>
+           </div>
           </div>
         </div>
       </div>
