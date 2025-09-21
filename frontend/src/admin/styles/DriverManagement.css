@@ -17,6 +17,9 @@
   gap: 10px;
   width: 70%;
   margin-left: 6%;
+  margin-top: 3%;
+  height: 8vh;
+  align-items: center;
 }
 
 .search-input-container {
@@ -76,6 +79,8 @@
   align-items: center;
   gap: 5px;
   white-space: nowrap;
+  height: 5.5vh;
+  width: 8vw;
 }
 
 .clear-input-button {

@@ -160,19 +160,20 @@ export default function UserManagement() {
             {searchTerm && (
               <button onClick={handleClearSearch} className="clear-input-button">×</button>
             )}
+
+            <button onClick={handleSearch} className="search-buttonu"><FaSearch /> Search</button>
           </div>
-          <button onClick={handleSearch} className="search-button"><FaSearch /> Search</button>
+          
 
           {/* Date filters */}
 
           <div className="date-filter-containeru">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="date-inputu" />
-            to
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="date-inputu" /><label>to</label>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="date-inputu" />
           </div>
 
           {/* Download */}
-          <button onClick={handleDownload} className="download-button"><FaDownload /> Download</button>
+          <button onClick={handleDownload} className="download-buttonu"><FaDownload /> Download</button>
         </div>
 
         {/* Users Table */}

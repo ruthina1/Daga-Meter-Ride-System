@@ -569,3 +569,16 @@ export const downloadTrips = async () => {
     console.error("Error downloading trips:", error);
   }
 };
+
+
+
+// earning here
+export const getEarnings = async (range = "7days") => {
+  try {
+    const res = await api.get(`/admin/earnings?range=${range}`);
+    
+    return res.data; // { labels: [], data: [], success: true }
+  } catch (err) {
+    return { success: false, message: err.response?.data?.message || "Failed to fetch earnings" };
+  }
+};
