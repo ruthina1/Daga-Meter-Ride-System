@@ -10,6 +10,7 @@ import DriverManagement from './admin/components/DriverManagement';
 import './App.css';
 import StaffManagement from './admin/components/StaffManagement';
 import CarManagement from './admin/components/CarManagement';
+import TripManagement from './admin/components/TripManagement';
 
 function App() {
   return (
@@ -57,12 +58,7 @@ function App() {
 <Route 
   path="/admin/trips" 
   element={
-    <ProtectedRoute>
-      <div style={{ padding: '20px' }}>
-        <h2>Trip Management</h2>
-        <p>Manage trips here.</p>
-      </div>
-    </ProtectedRoute>
+     <TripManagement/>
   } 
 />
 

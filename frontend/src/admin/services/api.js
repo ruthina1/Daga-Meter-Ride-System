@@ -497,3 +497,75 @@ export const registerStaff = async (token, staffData) => {
     return { success: false, message: err.message };
   }
 };
+
+
+
+
+// Trip management here
+export const getTrips = async (page = 1) => {
+  try {
+    const response = await fetch(`/api/rideManagement?page=${page}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        // Include auth token if needed
+        // 'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+    });
+    const data = await response.json();
+    // Backend returns { ride, totalRide } on page 1, else { ride }
+    return {
+      trips: data.ride || [],
+      totalCount: data.totalRide || (data.ride ? data.ride.length : 0)
+    };
+  } catch (error) {
+    console.error("Error fetching trips:", error);
+    return { trips: [], totalCount: 0 };
+  }
+};
+
+// Search trips (make sure backend has a /rideManagement/search endpoint)
+export const searchTrips = async (query) => {
+  try {
+    const response = await fetch(`/api/rideManagement/search?q=${query}`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await response.json();
+    return { trips: data.ride || [] };
+  } catch (error) {
+    console.error("Error searching trips:", error);
+    return { trips: [] };
+  }
+};
+
+// Filter trips by date (assuming backend supports start & end query)
+export const getTripsByDate = async (start, end) => {
+  try {
+    const response = await fetch(`/api/rideManagement?start=${start}&end=${end}`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await response.json();
+    return { trips: data.ride || [] };
+  } catch (error) {
+    console.error("Error fetching trips by date:", error);
+    return { trips: [] };
+  }
+};
+
+// Download trips (backend should return CSV/Excel)
+export const downloadTrips = async () => {
+  try {
+    const response = await fetch('/api/rideManagement/download', {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'trips.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (error) {
+    console.error("Error downloading trips:", error);
+  }
+};
