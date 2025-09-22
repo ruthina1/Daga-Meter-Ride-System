@@ -42,7 +42,7 @@ export default function DriverManagement() {
 
     if (response.ok) {
       setDrivers(result.drivers || []);
-      // Only set totalDrivers on first page or if totalDrivers exists
+      
       if (result.totalDrivers !== undefined) {
         setTotalDrivers(result.totalDrivers);
       }
@@ -140,16 +140,19 @@ const handleSearch = async () => {
     setEditData({});
   };
 
-  const handleDelete = async (driverId, phoneNumber) => {
-    const token = localStorage.getItem('authToken');
-    const result = await deleteDriver(token, driverId, phoneNumber);
-    
-    if (result.success) {
-      setDrivers(drivers.filter(driver => driver.id !== driverId));
-      setTotalDrivers(prev => prev - 1);
-      setDeleteConfirm(null);
-    }
-  };
+ const handleDelete = async (phoneNumber) => {
+  const token = localStorage.getItem('authToken');
+  const result = await deleteDriver(token, phoneNumber); 
+
+  if (result.success) {
+    setDrivers(prevDrivers => prevDrivers.filter(driver => driver.phoneNumber !== phoneNumber));
+    setTotalDrivers(prev => prev - 1);
+    setDeleteConfirm(null);
+  } else {
+    alert(result.message || "Failed to delete driver");
+  }
+};
+
 
   const handleInputChange = (field, value) => {
     setEditData(prev => ({
@@ -386,7 +389,7 @@ const handleSearch = async () => {
               className="download-button"
               disabled={!startDate || !endDate || drivers.length === 0}
             >
-              <FaDownload /> Download PDF
+              <FaDownload /> Download
             </button>
             <button onClick={() => setShowRegisterForm(true)} className="new-driver-button">
               <FaPlus /> New Driver
@@ -541,28 +544,29 @@ const handleSearch = async () => {
           </div>
         )}
 
-        {deleteConfirm && (
-          <div className="delete-modal">
-            <div className="delete-modal-content">
-              <h3>Confirm Delete</h3>
-              <p>Are you sure you want to delete this driver permanently?</p>
-              <div className="delete-modal-actions">
-                <button
-                  onClick={() => handleDelete(deleteConfirm, drivers.find(d => d.id === deleteConfirm)?.phoneNumber)}
-                  className="confirm-delete-button"
-                >
-                  Yes, Delete
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="cancel-delete-button"
-                >
-                  Cancel
-                </button>
+            {deleteConfirm && (
+            <div className="delete-modal">
+              <div className="delete-modal-content">
+                <h3>Confirm Delete</h3>
+                <p>Are you sure you want to delete this driver permanently?</p>
+                <div className="delete-modal-actions">
+                  <button
+                    onClick={() => handleDelete(drivers.find(d => d.id === deleteConfirm)?.phoneNumber)}
+                    className="confirm-delete-button"
+                  >
+                    Yes, Delete
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="cancel-delete-button"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
 
         {showRegisterForm && (
           <DriverRegistrationForm 

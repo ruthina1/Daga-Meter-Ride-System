@@ -1,4 +1,3 @@
-// src/admin/components/StaffManagement.jsx
 import React, { useState, useEffect } from 'react';
 import {
   getStaff,
@@ -22,6 +21,10 @@ import {
 } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import '../styles/StaffManagement.css';
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import { getStaffReport } from '../services/api';  // make sure this exists in api.js
+
 
 export default function StaffManagement() {
   const [staff, setStaff] = useState([]);
@@ -37,8 +40,10 @@ export default function StaffManagement() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [idPreview, setIdPreview] = useState(null);
+  
 
   const staffPerPage = 6;
+  const token = localStorage.getItem("token"); // added
 
   useEffect(() => {
     fetchStaff();
@@ -46,24 +51,17 @@ export default function StaffManagement() {
 
   const fetchStaff = async () => {
     setLoading(true);
-    const result = await getStaff(currentPage, staffPerPage);
+    const result = await getStaff(token, currentPage, staffPerPage);
     if (result.success) {
       setStaff(result.data.staff);
-      setTotalStaff(result.data.totalCount);
+      if (result.data.totalCount !== null) {
+        setTotalStaff(result.data.totalCount);
+      }
     }
     setLoading(false);
   };
 
-  const fetchStaffByDate = async () => {
-    if (!startDate || !endDate) return;
-    setLoading(true);
-    const result = await getStaffByDate(startDate, endDate);
-    if (result.success) {
-      setStaff(result.data);
-      setIsSearching(true);
-    }
-    setLoading(false);
-  };
+ // search staff
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
@@ -73,27 +71,25 @@ export default function StaffManagement() {
     }
     setIsSearching(true);
     setLoading(true);
-    const result = await searchStaff(searchTerm);
-    let filtered = result.success ? result.data : [];
+    const result = await searchStaff(token, searchTerm); // updated
+    let filtered = result.success ? result.data.staff ? [result.data.staff] : [] : [];
     setStaff(filtered);
     setLoading(false);
   };
 
   const handleEdit = (member) => {
-    setEditingId(member.id);
+    setEditingId(member.phone); // backend identifies staff by phone
     setEditData({
       fullName: member.fullName,
-      phoneNumber: member.phoneNumber,
-      idImage: member.idImage
+      phoneNumber: member.phoneNumber
     });
-    setIdPreview(member.idImage);
   };
 
-  const handleSave = async (staffId) => {
-    const result = await updateStaff(staffId, editData);
+  const handleSave = async (staffPhone) => {
+    const result = await updateStaff(token, staffPhone, editData); // updated
     if (result.success) {
       setStaff(staff.map(member =>
-        member.id === staffId ? { ...member, ...editData } : member
+        member.phoneNumber === staffPhone ? { ...member, ...editData } : member
       ));
       setEditingId(null);
       setEditData({});
@@ -107,10 +103,10 @@ export default function StaffManagement() {
     setIdPreview(null);
   };
 
-  const handleDelete = async (staffId) => {
-    const result = await deleteStaff(staffId);
+  const handleDelete = async (staffPhone) => {
+    const result = await deleteStaff(token, staffPhone); // updated
     if (result.success) {
-      setStaff(staff.filter(member => member.id !== staffId));
+      setStaff(staff.filter(member => member.phoneNumber !== staffPhone));
       setTotalStaff(prev => prev - 1);
       setDeleteConfirm(null);
     }
@@ -128,19 +124,8 @@ export default function StaffManagement() {
     fetchStaff();
   };
 
-  const handleIdUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setIdPreview(event.target.result);
-      setEditData(prev => ({ ...prev, idImage: file }));
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleRegister = async (formData) => {
-    const result = await registerStaff(formData);
+    const result = await registerStaff(token, formData); // updated
     if (result.success) {
       setShowRegisterForm(false);
       fetchStaff();
@@ -148,10 +133,28 @@ export default function StaffManagement() {
     return result;
   };
 
-  const handleDownloadReport = () => {
-    if (!staff.length) { alert("No staff data available."); return; }
+ 
+
+const handleDownloadReport = async () => {
+  try {
+    if (!startDate || !endDate) {
+      alert("Please select a start and end date.");
+      return;
+    }
+
+    // Call backend API
+    const res = await getStaffReport(startDate, endDate);
+
+    if (!res.success || !res.data.length) {
+      alert("No staff data available for the selected date range.");
+      return;
+    }
+
+    const staffData = res.data;
+    const dateRangeText = `${startDate} to ${endDate}`;
+
+    // Same printing logic as yours
     const printWindow = window.open('', '_blank');
-    const dateRangeText = startDate && endDate ? `${startDate} to ${endDate}` : 'All Dates';
     const htmlContent = `
       <html>
         <head>
@@ -167,23 +170,21 @@ export default function StaffManagement() {
         <body>
           <h2>Staff Management Report</h2>
           <div>Date Range: ${dateRangeText}</div>
-          <div>Total Staff: ${staff.length}</div>
+          <div>Total Staff: ${staffData.length}</div>
           <table>
             <thead>
               <tr>
                 <th>Full Name</th>
                 <th>Phone Number</th>
                 <th>Registration Date</th>
-                <th>ID</th>
               </tr>
             </thead>
             <tbody>
-              ${staff.map(s => `
+              ${staffData.map(s => `
                 <tr>
                   <td>${s.fullName}</td>
                   <td>${s.phoneNumber}</td>
                   <td>${new Date(s.registrationDate).toLocaleDateString()}</td>
-                  <td>${s.idImage ? 'Yes' : 'No'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -194,7 +195,12 @@ export default function StaffManagement() {
     printWindow.document.write(htmlContent);
     printWindow.document.close();
     printWindow.onload = () => printWindow.print();
-  };
+
+  } catch (error) {
+    console.error("Error downloading report:", error);
+    alert("Failed to generate report.");
+  }
+};
 
   const totalPages = Math.ceil(totalStaff / staffPerPage);
 
@@ -251,44 +257,33 @@ export default function StaffManagement() {
                 <th>Full Name</th>
                 <th>Phone Number</th>
                 <th>Registration Date</th>
-                <th>ID</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {staff.map(member => (
-                <tr key={member.id}>
-                  <td>{editingId === member.id
+                <tr key={member.phoneNumber}>
+                  <td>{editingId === member.phoneNumber
                     ? <input type="text" value={editData.fullName} onChange={e => handleInputChange('fullName', e.target.value)} />
                     : member.fullName}</td>
 
-                  <td>{editingId === member.id
+                  <td>{editingId === member.phoneNumber
                     ? <input type="text" value={editData.phoneNumber} onChange={e => handleInputChange('phoneNumber', e.target.value)} />
                     : member.phoneNumber}</td>
 
                   <td>{new Date(member.registrationDate).toLocaleDateString()}</td>
 
                   <td>
-                    {editingId === member.id ? (
-                      <input type="file" accept="image/*" onChange={handleIdUpload} />
-                    ) : member.idImage ? (
-                      <button onClick={() => setIdPreview(member.idImage)} className="view-id-button">
-                        <FaEye /> View
-                      </button>
-                    ) : 'No ID'}
-                  </td>
-
-                  <td>
                     <div style={{ display: 'flex', gap: '5px' }}>
-                      {editingId === member.id ? (
+                      {editingId === member.phoneNumber ? (
                         <>
-                          <button onClick={() => handleSave(member.id)} className="action-button save-button"><FaSave /></button>
+                          <button onClick={() => handleSave(member.phoneNumber)} className="action-button save-button"><FaSave /></button>
                           <button onClick={handleCancelEdit} className="action-button cancel-button"><FaTimes /></button>
                         </>
                       ) : (
                         <>
                           <button onClick={() => handleEdit(member)} className="action-button edit-button"><FaEdit /></button>
-                          <button onClick={() => setDeleteConfirm(member.id)} className="action-button delete-button"><FaTrash /></button>
+                          <button onClick={() => setDeleteConfirm(member.phoneNumber)} className="action-button delete-button"><FaTrash /></button>
                         </>
                       )}
                     </div>
@@ -297,13 +292,8 @@ export default function StaffManagement() {
               ))}
             </tbody>
           </table>
+          {staff.length === 0 && <div  className="no-staff">No staffs found</div>}
         </div>
-
-        {staff.length === 0 && (
-          <div className="no-staff">
-            {isSearching ? 'No staff found matching your search' : 'No staff found'}
-          </div>
-        )}
 
         {!isSearching && totalPages > 1 && (
           <div className="pagination">
@@ -346,7 +336,9 @@ export default function StaffManagement() {
   );
 }
 
-// Staff Registration Form (unchanged except token removed)
+// StaffRegistrationForm 
+
+
 function StaffRegistrationForm({ onClose, onRegister }) {
   const [formData, setFormData] = useState({ fullName: '', phoneNumber: '', password: '', idImage: null });
   const [errors, setErrors] = useState({});

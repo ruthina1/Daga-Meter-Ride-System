@@ -126,6 +126,7 @@
   align-items: center;
   gap: 0.5%;
   width: 8%;
+    border-radius: 4px;
 }
 
 .search-button:hover {
