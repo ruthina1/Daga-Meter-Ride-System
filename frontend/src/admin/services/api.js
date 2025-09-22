@@ -360,15 +360,6 @@ export const registerStaff = async (token, staffData) => {
   }
 };
 
-// Get staff by date (stub - backend not implemented)
-export const getStaffByDate = async (token, startDate, endDate) => {
-  try {
-    // You don’t have backend support, so just return empty array
-    return { success: true, data: [] };
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-};
 
 
 export const getStaffReport = async (startDate, endDate) => {
@@ -383,72 +374,31 @@ export const getStaffReport = async (startDate, endDate) => {
 
 
 // Trip management here
-export const getTrips = async (page = 1) => {
-  try {
-    const response = await fetch(`/api/rideManagement?page=${page}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        // Include auth token if needed
-        // 'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-    });
-    const data = await response.json();
-    // Backend returns { ride, totalRide } on page 1, else { ride }
-    return {
-      trips: data.ride || [],
-      totalCount: data.totalRide || (data.ride ? data.ride.length : 0)
-    };
-  } catch (error) {
-    console.error("Error fetching trips:", error);
-    return { trips: [], totalCount: 0 };
-  }
+
+export const getTrips = async (token, page = 1) => {
+  const res = await fetch(`/api/rideManagement?page=${page}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
 };
 
-// Search trips (make sure backend has a /rideManagement/search endpoint)
-export const searchTrips = async (query) => {
-  try {
-    const response = await fetch(`/api/rideManagement/search?q=${query}`, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const data = await response.json();
-    return { trips: data.ride || [] };
-  } catch (error) {
-    console.error("Error searching trips:", error);
-    return { trips: [] };
-  }
+export const searchTrips = async (token, phone) => {
+  const res = await fetch(`/api/searchRide`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ phone }),
+  });
+  return res.json();
 };
 
-// Filter trips by date (assuming backend supports start & end query)
-export const getTripsByDate = async (start, end) => {
-  try {
-    const response = await fetch(`/api/rideManagement?start=${start}&end=${end}`, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const data = await response.json();
-    return { trips: data.ride || [] };
-  } catch (error) {
-    console.error("Error fetching trips by date:", error);
-    return { trips: [] };
-  }
-};
-
-// Download trips (backend should return CSV/Excel)
-export const downloadTrips = async () => {
-  try {
-    const response = await fetch('/api/rideManagement/download', {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'trips.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } catch (error) {
-    console.error("Error downloading trips:", error);
-  }
+export const getTripReport = async (token, startDate, endDate) => {
+  const res = await fetch(`/api/tripReport?startDate=${startDate}&endDate=${endDate}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
 };
 
 // earning here

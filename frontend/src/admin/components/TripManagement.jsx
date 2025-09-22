@@ -1,6 +1,11 @@
 // src/admin/components/TripManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { getTrips, searchTrips, getTripsByDate, downloadTrips } from '../services/api';
+import {
+  getTrips,
+  searchTrips,
+  getTripsByDate,
+  getTripReport
+} from '../services/api';
 import { FaSearch, FaArrowLeft, FaArrowRight, FaDownload } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import '../styles/TripManagement.css';
@@ -16,14 +21,17 @@ export default function TripManagement() {
   const [endDate, setEndDate] = useState('');
 
   const tripsPerPage = 6;
+  const token = localStorage.getItem('token');
 
   // Fetch trips
   const fetchTrips = async (page = currentPage) => {
     setLoading(true);
     try {
-      const result = await getTrips(page);
-      setTrips(result.trips || []);
-      setTotalTrips(result.totalCount || result.trips.length || 0);
+      const result = await getTrips(token, page);
+      if (result.success) {
+        setTrips(result.data.trips || []);
+        setTotalTrips(result.data.totalCount || 0);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -46,9 +54,11 @@ export default function TripManagement() {
     setIsSearching(true);
     setLoading(true);
     try {
-      const result = await searchTrips(searchTerm);
-      setTrips(result.trips || []);
-      setTotalTrips(result.trips.length || 0);
+      const result = await searchTrips(token, searchTerm);
+      if (result.success) {
+        setTrips(result.data.trips || []);
+        setTotalTrips(result.data.trips.length || 0);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -56,14 +66,81 @@ export default function TripManagement() {
     }
   };
 
-  // Download trips
-  const handleDownload = async () => {
-    try {
-      await downloadTrips(); // Backend should handle CSV or Excel download
-    } catch (error) {
-      console.error(error);
+  // Download trips filtered by date
+ // Download trips filtered by date (printable report)
+const handleDownload = async () => {
+  if (!startDate || !endDate) {
+    alert('Please select start and end date.');
+    return;
+  }
+
+  try {
+    const res = await getTripReport(token, startDate, endDate);
+    if (!res.success || !res.data.length) {
+      alert('No trips available for the selected date range.');
+      return;
     }
-  };
+
+    const tripsData = res.data;
+
+    const dateRangeText = `${startDate} to ${endDate}`;
+    const printWindow = window.open('', '_blank');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Trip Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h2 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+            th { background-color: #f8f9fa; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+          </style>
+        </head>
+        <body>
+          <h2>Trip Report</h2>
+          <div>Date Range: ${dateRangeText}</div>
+          <div>Total Trips: ${tripsData.length}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Passenger Name</th>
+                <th>Driver Name</th>
+                <th>Initial Location</th>
+                <th>Destination</th>
+                <th>Ride Date & Time</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tripsData.map(trip => `
+                <tr>
+                  <td>${trip.passengerName}</td>
+                  <td>${trip.driverName}</td>
+                  <td>${trip.initialLocation}</td>
+                  <td>${trip.destinationLocation}</td>
+                  <td>${new Date(trip.rideDateTime).toLocaleString()}</td>
+                  <td>${trip.price.toLocaleString()} ETB</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.onload = () => printWindow.print();
+
+  } catch (error) {
+    console.error('Error generating report:', error);
+    alert('Failed to generate report.');
+  }
+};
+
 
   const handleClearSearch = () => {
     setSearchTerm('');
@@ -76,18 +153,11 @@ export default function TripManagement() {
 
   const totalPages = Math.ceil(totalTrips / tripsPerPage);
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div>Loading trip data...</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="loading-container">Loading trip data...</div>;
 
   return (
     <div className="dashboard-container">
       <Sidebar />
-
       <div className="trip-management-container">
         {/* Stats */}
         <div className="stats-container">
@@ -151,7 +221,6 @@ export default function TripManagement() {
               ))}
             </tbody>
           </table>
-
           {trips.length === 0 && (
             <div className="no-users">
               {isSearching ? 'No trips found matching your search' : 'No trips found'}
