@@ -35,6 +35,19 @@ export const login = async (credentials) => {
   }
 };
 
+
+// earning here
+export const getEarnings = async (range = "7days") => {
+  try {
+    const res = await api.get(`/admin/earnings?range=${range}`);
+    
+    return res.data; 
+  } catch (err) {
+    return { success: false, message: err.response?.data?.message || "Failed to fetch earnings" };
+  }
+};
+
+
 // Also update the signIn function to return the same consistent structure
 export const signIn = async (credentials) => {
   try {
@@ -401,13 +414,111 @@ export const getTripReport = async (token, startDate, endDate) => {
   return res.json();
 };
 
-// earning here
-export const getEarnings = async (range = "7days") => {
+
+
+// car management here
+
+
+const API_BASE_URL = 'http://localhost:5000'; 
+
+const getToken = () => localStorage.getItem('authToken');
+
+export const getCars = async (page = 1, limit = 6) => {
   try {
-    const res = await api.get(`/admin/earnings?range=${range}`);
-    
-    return res.data; 
-  } catch (err) {
-    return { success: false, message: err.response?.data?.message || "Failed to fetch earnings" };
+    const token = getToken();
+    const res = await axios.get(`${API_BASE_URL}/carManagement?page=${page}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.data.success) {
+      return {
+        success: true,
+        data: {
+          cars: res.data.cars,
+          totalCount: res.data.totalCars,
+          pageCount: res.data.pageCount
+        }
+      };
+    }
+    return { success: false, message: 'Failed to fetch cars' };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.message };
+  }
+};
+
+export const searchCar = async (token, plate_no) => {
+  try {
+    token = token || getToken();
+    const res = await axios.get(`${API_BASE_URL}/searchCar`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { plate_no }
+    });
+    if (res.data.success) {
+      return { success: true, data: [res.data.car] }; 
+    }
+    return { success: false, message: 'Car not found' };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.response?.data?.message || error.message };
+  }
+};
+
+export const updateCar = async (token, carId, editData) => {
+  try {
+    token = token || getToken();
+    const { carName, carType, registrationDate } = editData;
+    const res = await axios.patch(`${API_BASE_URL}/editCar`, 
+      { model: carName, car_type: carType, plate_no: carId },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.data.success) return { success: true, data: res.data.cars };
+    return { success: false, message: 'Failed to update car' };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.response?.data?.message || error.message };
+  }
+};
+
+export const deleteCar = async (token, carId) => {
+  try {
+    token = token || getToken();
+    const res = await axios.delete(`${API_BASE_URL}/deleteCar`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { plate_no: carId }
+    });
+    return res.data.success ? { success: true } : { success: false, message: res.data.message };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.response?.data?.message || error.message };
+  }
+};
+
+export const registerCar = async (token, formData) => {
+  try {
+    token = token || getToken();
+    const { plate_no, carName, carType, registrationDate } = formData;
+    const res = await axios.post(`${API_BASE_URL}/addCar`,
+      { plate_no, model: carName, car_type: carType, registrationDate },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data.success ? { success: true } : { success: false, message: res.data.message };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.response?.data?.message || error.message };
+  }
+};
+
+
+export const getCarsByDate = async (startDate, endDate) => {
+  try {
+    const token = getToken();
+    const res = await axios.get(`${API_BASE_URL}/carReport`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { startDate, endDate }
+    });
+    return res.data.success ? { success: true, data: res.data.data } : { success: false };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.response?.data?.message || error.message };
   }
 };

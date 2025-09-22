@@ -1,6 +1,6 @@
 // src/admin/components/DriverManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { getDrivers, updateDriver, deleteDriver, searchDrivers, registerDriver, getDriversByDate } from '../services/api';
+import { getDrivers, updateDriver, deleteDriver, searchDrivers, registerDriver} from '../services/api';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight, FaPlus, FaDownload, FaEye } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import jsPDF from 'jspdf';
@@ -9,7 +9,6 @@ import '../styles/DriverManagement.css';
 
 export default function DriverManagement() {
   const [drivers, setDrivers] = useState([]);
-  const [reportDriver, setReportDriver] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
