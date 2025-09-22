@@ -43,15 +43,6 @@ export default function SignIn({ setActiveComponent, onVisibilityChange, isVisib
     setLoading(false);
   };
 
-  const handleSignUp = () => {
-    if (setActiveComponent) {
-      setActiveComponent("signup");   
-    }
-    if (onVisibilityChange) {
-      onVisibilityChange(false);
-    }
-  };
-
   const handleForgetPassword = () => {
     if (setActiveComponent) {
       setActiveComponent("forgetPassword");
@@ -95,11 +86,7 @@ export default function SignIn({ setActiveComponent, onVisibilityChange, isVisib
         </form>
 
         <div className='sign-in-actions'>
-          <p>
-            Don't you have account?{' '}
-            <span className="sign-up-link" onClick={handleSignUp}>Sign Up</span>
-          </p>
-          
+         
           <p onClick={handleForgetPassword} className='forget-password-link'>Forget Password</p>
         </div>
       </div>

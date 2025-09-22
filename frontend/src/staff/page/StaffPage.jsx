@@ -4,14 +4,13 @@ import MainContent from "../components/MainContent";
 import History from "../components/History";
 import Setting from "../components/Setting";
 import Sidebar from "../components/Sidebar";
-import SignIn from "../../signup/components/SignIn";
-import SignUp from "../../signup/components/SignUp";
-
+import SignIn from "../components/SignIn";
 import '../styles/StaffPage.css';
 
 export default function StaffPage() {
   const [activeComponent, setActiveComponent] = useState("main"); 
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [notifications, setNotifications] = useState(3); // Example notification count
 
   const handleSetActiveComponent = (component) => {
     console.log("Setting active component to:", component);
@@ -25,13 +24,16 @@ export default function StaffPage() {
 
   return (
     <div className="staff-page">
-      {activeComponent !== "signin" && activeComponent !== "signup" && <Header onMenuClick={handleShowSidebar} />}
+      {activeComponent !== "signin" && activeComponent !== "signup" && (
+        <Header onMenuClick={handleShowSidebar} notifications={notifications} />
+      )}
       
       {activeComponent !== "signin" && (
         <Sidebar 
           setActiveComponent={handleSetActiveComponent}
           onVisibilityChange={setIsSidebarVisible}
           isVisible={isSidebarVisible}
+          activeComponent={activeComponent}
         />
       )}
 
@@ -46,13 +48,7 @@ export default function StaffPage() {
             isVisible={isSidebarVisible} 
           />
         )}
-        {activeComponent === "signup" && (
-          <SignUp 
-            setActiveComponent={setActiveComponent} 
-            onVisibilityChange={setIsSidebarVisible} 
-            isVisible={isSidebarVisible} 
-          />
-        )}
+        
       </div>
     </div>
   );

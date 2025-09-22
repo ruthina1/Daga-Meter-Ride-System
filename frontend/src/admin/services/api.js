@@ -96,7 +96,7 @@ export const signIn = async (credentials) => {
 // Get paginated users
 export const getUsers = async (page = 1) => {
   try {
-    const response = await api.get(`/users?page=${page}`);
+    const response = await api.get(`/admin/usermanagement?page=${page}`);
     return response.data; // { users, totalUsers }
   } catch (error) {
     throw new Error(error.response?.data?.message || "Failed to fetch users");

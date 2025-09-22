@@ -190,9 +190,9 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id}>
+                <tr key={user.phoneNumber}>
                   <td>
-                    {editingId === user.id ? (
+                    {editingId === user.phoneNumber ? (
                       <input
                         type="text"
                         value={editData.fullName || ''}
@@ -202,7 +202,7 @@ export default function UserManagement() {
                     ) : user.fullName}
                   </td>
                   <td>
-                    {editingId === user.id ? (
+                    {editingId === user.phoneNumber ? (
                       <input
                         type="text"
                         value={editData.phoneNumber || ''}
@@ -211,18 +211,20 @@ export default function UserManagement() {
                       />
                     ) : user.phoneNumber}
                   </td>
-                  <td>{new Date(user.registrationDate).toLocaleDateString()}</td>
-                  <td>{user.totalPayment.toLocaleString()} ETB</td>
+                  <td>{user.registrationDate ? new Date(user.registrationDate).toLocaleDateString() : 'N/A'}</td>
+
+                  <td>{user.totalPayment != null ? user.totalPayment.toLocaleString() : '0'} ETB</td>
+
                   <td>
-                    {editingId === user.id ? (
+                    {editingId === user.phoneNumber ? (
                       <div className="action-buttons">
-                        <button onClick={() => handleSave(user.id)} className="action-button save-button" title="Save"><FaSave /></button>
+                        <button onClick={() => handleSave(user.phoneNumber)} className="action-button save-button" title="Save"><FaSave /></button>
                         <button onClick={handleCancelEdit} className="action-button cancel-button" title="Cancel"><FaTimes /></button>
                       </div>
                     ) : (
                       <div className="action-buttons">
                         <button onClick={() => handleEdit(user)} className="action-button edit-button" title="Edit"><FaEdit /></button>
-                        <button onClick={() => setDeleteConfirm(user.id)} className="action-button delete-button" title="Delete"><FaTrash /></button>
+                        <button onClick={() => setDeleteConfirm(user.phoneNumber)} className="action-button delete-button" title="Delete"><FaTrash /></button>
                       </div>
                     )}
                   </td>
