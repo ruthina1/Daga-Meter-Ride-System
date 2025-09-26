@@ -5,11 +5,10 @@ const api = axios.create({
   baseURL: "http://localhost:5000/api",
   headers: { "Content-Type": "application/json" },
 });
-
 // Add token automatically if it exists
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("authToken"); // use same key as AdminDashboard
+    const token = localStorage.getItem("authToken"); 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -20,20 +19,24 @@ api.interceptors.request.use(
 
 export const login = async (credentials) => {
   try {
-    const response = await api.post("/admin/login", credentials);
+    const res = await api.post("/admin/login", credentials);
+
+    const data = res.data; // axios auto-parses JSON
 
     return {
       success: true,
-      token: response.data.token,
-      user: response.data.admin, // backend sends dashboard data along with admin info
+      token: data.token,
+      user: data.admin,
     };
-  } catch (error) {
+  } catch (err) {
     return {
       success: false,
-      message: error.response?.data?.message || "Server error. Please try again.",
+      message: err.response?.data?.message || err.message,
     };
   }
 };
+
+
 
 
 // earning here
@@ -106,7 +109,7 @@ export const getUsers = async (page = 1) => {
 // Search user by phone
 export const searchUsers = async (phone) => {
   try {
-    const response = await api.post("/users/search", { phone });
+    const response = await api.get(`/admin/searchUser?phone=${encodeURIComponent(phone)}`);
     return response.data; // { success, user }
   } catch (error) {
     return { success: false, message: error.response?.data?.message || "Search failed" };
@@ -116,7 +119,7 @@ export const searchUsers = async (phone) => {
 // Edit user (update name)
 export const updateUser = async (phone, name, page = 1) => {
   try {
-    const response = await api.put(`/users/edit?page=${page}`, { phone, name });
+    const response = await api.put(`/usermanagement/edit?page=${page}`, { phone, name });
     return response.data; // { success, users }
   } catch (error) {
     return { success: false, message: error.response?.data?.message || "Failed to edit user" };
@@ -126,7 +129,7 @@ export const updateUser = async (phone, name, page = 1) => {
 // Delete user
 export const deleteUser = async (phone, page = 1) => {
   try {
-    const response = await api.delete(`/users/${phone}?page=${page}`);
+    const response = await api.delete(`/usermanagement/${phone}?page=${page}`);
     return response.data; // { success, users }
   } catch (error) {
     return { success: false, message: error.response?.data?.message || "Failed to delete user" };
@@ -136,7 +139,7 @@ export const deleteUser = async (phone, page = 1) => {
 // Register new user
 export const registerUser = async (userData) => {
   try {
-    const response = await api.post("/users/register", userData);
+    const response = await api.post("/admin/usermanagement/register", userData);
     return response.data; // { success, user }
   } catch (error) {
     return { success: false, message: error.response?.data?.message || "Failed to register user" };
@@ -146,7 +149,7 @@ export const registerUser = async (userData) => {
 // Download users (Excel/PDF)
 export const downloadUsers = async () => {
   try {
-    const response = await api.get("/users/download", { responseType: "blob" });
+    const response = await api.get("/usermanagement/download", { responseType: "blob" });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
@@ -163,32 +166,38 @@ export const downloadUsers = async () => {
 };
 
 // Get users by date range
-export const getUsersByDate = async (startDate, endDate, page = 1) => {
+export const getUsersByDate = async (startDate, endDate) => {
   try {
-    const response = await api.get(`/users/by-date?start=${startDate}&end=${endDate}&page=${page}`);
-    return { success: true, data: response.data.users };
+    const response = await api.get(`/report/userReport?startDate=${startDate}&endDate=${endDate}`);
+    return response.data; // { success, data }
   } catch (error) {
-    return { success: false, message: error.response?.data?.message || "Failed to fetch users by date" };
+    throw new Error(error.response?.data?.message || "Failed to fetch users by date");
   }
 };
-
 // ==================  DRIVER MANAGEMENT ==================
-
 // Get drivers with pagination
 export const getDrivers = async (page = 1) => {
   try {
-    const res = await api.get(`/drivers?page=${page}`);
-    return res.data; // { success, drivers, totalDrivers }
+    const res = await api.get(`/admin/driverManagement?page=${page}`); // ✅ include /admin if mounted under /api/admin
+    return {
+      success: true,
+      data: {
+        drivers: res.data.drivers,
+        totalCount: res.data.totalDrivers,
+      },
+    };
   } catch (error) {
     return { success: false, message: error.response?.data?.message || "Failed to fetch drivers" };
   }
 };
 
 // Search driver by phone
-export const searchDrivers = async (phone, page = 1) => {
+
+// frontend api.js
+export const searchDrivers = async (phone) => {
   try {
-    const res = await api.post(`/drivers/search?page=${page}`, { phone });
-    return res.data;
+    const res = await api.get(`/admin/searchDriver?phone=${encodeURIComponent(phone)}`);
+    return res.data; // { success, driver }
   } catch (error) {
     return { success: false, message: error.response?.data?.message || "Search failed" };
   }
@@ -196,329 +205,298 @@ export const searchDrivers = async (phone, page = 1) => {
 
 
 // Update driver info
-export const updateDriver = async (fullName, phoneNumber, plateNumber, license, page = 1) => {
+export const updateDriver = async (name, phone, plate_no, page = 1) => {
   try {
     const formData = new FormData();
-    formData.append('fullName', fullName);
-    formData.append('phoneNumber', phoneNumber);
-    formData.append('plateNumber', plateNumber);
-    if (license instanceof File) formData.append('license', license);
-
-    const res = await api.put(`/drivers?page=${page}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    return res.data; // { success, drivers }
+    formData.append("name", name);
+    formData.append("phone", phone);
+    formData.append("plate_no", plate_no);
+    const res = await api.put(`/admin/editDriver?page=${page}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+    return res.data;
   } catch (error) {
-    return { 
-      success: false, 
-      message: error.response?.data?.message || "Update failed" 
-    };
+    return { success: false, message: error.response?.data?.message || "Update failed" };
   }
 };
-
-
 
 // Delete driver
 export const deleteDriver = async (phone, page = 1) => {
   try {
-    const res = await api.delete(`/drivers/${phone}?page=${page}`);
+    const res = await api.delete(`/admin/driverManagement/${phone}?page=${page}`); // ✅ include /admin
     return res.data; // { success, drivers }
   } catch (error) {
     return { success: false, message: error.response?.data?.message || "Delete failed" };
   }
 };
 
-// 🚖 Register a new driver
-export const registerDriver = async (fullName, phoneNumber, plateNumber, license) => {
+// Register a new driver
+
+export const registerDriver = async (formData) => {
   try {
-    const res = await api.post("/drivers", {
-      fullName,
-      phoneNumber,
-      plateNumber,
-      license,
+    console.log("Sending registration request to /admin/addDriver");
+    
+    const res = await api.post("/admin/addDriver", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
-    return res.data; // { success, driver }
+
+    console.log("Registration response:", res.data);
+    return res.data;
+
   } catch (error) {
-    return { 
-      success: false, 
-      message: error.response?.data?.message || "Registration failed" 
+    console.error("Registration error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    return {
+      success: false,
+      message: error.response?.data?.message || error.response?.data || "Registration failed. Check console for details.",
     };
   }
 };
-
+// Get drivers by date
 export const getDriversByDate = async (startDate, endDate) => {
   try {
-    const res = await api.get(`/drivers/by-date?start=${startDate}&end=${endDate}`);
-    return res.data; // { success, drivers }
+    const response = await api.get(`/report/driverReport?startDate=${startDate}&endDate=${endDate}`);
+    return response.data; // { success, data }
   } catch (error) {
-    return { 
-      success: false, 
-      message: error.response?.data?.message || "Failed to fetch drivers by date" 
-    };
+    throw new Error(error.response?.data?.message || "Failed to fetch users by date");
   }
 };
 
 
-// here is the staff
 
-const API_URL = "http://localhost:5000/api";
+// ================== STAFF MANAGEMENT ==================
 
-// Get staff (paginated)
-export const getStaff = async (token, page = 1, limit = 6) => {
+
+// Get paginated staff
+export const getStaff = async (page = 1) => {
   try {
-    const res = await fetch(`${API_URL}/staffManagement?page=${page}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    const data = await res.json();
-    if (!res.ok) return { success: false, message: data.message };
-
+    const res = await api.get(`/admin/staffManagement?page=${page}`);
     return {
       success: true,
       data: {
-        staff: data.staff,
-        totalCount: data.totalStaff,
+        staff: res.data.staff,
+        totalCount: res.data.totalStaff,
       },
     };
   } catch (err) {
-    return { success: false, message: err.message };
+    return { success: false, message: err.response?.data?.message || "Failed to fetch staff" };
   }
 };
 
-// Search staff (by phone)
-export const searchStaff = async (token, phone) => {
+// Search staff by phone
+export const searchStaff = async (phone) => {
   try {
-    const res = await fetch(`${API_URL}/searchStaff`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ phone }),
-    });
-    const data = await res.json();
-    if (!res.ok) return { success: false, message: data.message };
-
-    return { success: true, data };
-  } catch (err) {
-    return { success: false, message: err.message };
+    const res = await api.get(`/admin/searchStaff?phone=${encodeURIComponent(phone)}`);
+    return res.data; // { success, driver }
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || "Search failed" };
   }
 };
+
 
 // Update staff
-export const updateStaff = async (token, staffPhone, updateData) => {
+export const updateStaff = async (staffPhone, updateData, page = 1) => {
   try {
-    const res = await fetch(`${API_URL}/editStaff?page=1`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: updateData.fullName,
-        phone: staffPhone,
-      }),
+    const res = await api.put(`/staffManagement/edit?page=${page}`, {
+      name: updateData.fullName,
+      phone: staffPhone,
     });
-    const data = await res.json();
-    if (!res.ok) return { success: false, message: data.message };
-
-    return data;
+    return res.data; // { success, staff }
   } catch (err) {
-    return { success: false, message: err.message };
+    return { success: false, message: err.response?.data?.message || "Update failed" };
   }
 };
 
 // Delete staff
-export const deleteStaff = async (token, staffPhone) => {
+export const deleteStaff = async (staffPhone, page = 1) => {
   try {
-    const res = await fetch(`${API_URL}/deleteStaff`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ phone: staffPhone }),
-    });
-    const data = await res.json();
-    if (!res.ok) return { success: false, message: data.message };
-
-    return data;
+    const res = await api.delete(`/staffManagement/${staffPhone}?page=${page}`);
+    return res.data; // { success, staff }
   } catch (err) {
-    return { success: false, message: err.message };
+    return { success: false, message: err.response?.data?.message || "Delete failed" };
   }
 };
 
 // Register new staff
-export const registerStaff = async (token, staffData) => {
+export const registerStaff = async (formData) => {
   try {
-    const formData = new FormData();
-    formData.append("name", staffData.fullName);
-    formData.append("phone", staffData.phoneNumber);
-    formData.append("password", staffData.password);
-    if (staffData.idImage) formData.append("residential_id", staffData.idImage);
-
-    const res = await fetch(`${API_URL}/addStaff`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
+    console.log("Sending registration request to /admin/addStaff");
+    
+    const res = await api.post("/admin/addStaff", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
-    const data = await res.json();
-    if (!res.ok) return { success: false, message: data.message };
 
-    return data;
+    console.log("Registration response:", res.data);
+    return res.data;
+
+  } catch (error) {
+    console.error("Registration error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    return {
+      success: false,
+      message: error.response?.data?.message || error.response?.data || "Registration failed. Check console for details.",
+    };
+  }
+};
+
+// Get staff by date range
+
+export const getStaffByDate = async (startDate, endDate) => {
+  try {
+    const response = await api.get(`/report/staffReport?startDate=${startDate}&endDate=${endDate}`);
+    return response.data; // { success, data }
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Failed to fetch users by date");
+  }
+};
+
+// Download staff (Excel/PDF)
+export const getStaffReport = async () => {
+  try {
+    const res = await api.get("/staffManagement/download", { responseType: "blob" });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "staff.xlsx");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    return { success: true };
   } catch (err) {
-    return { success: false, message: err.message };
+    return { success: false, message: err.response?.data?.message || "Failed to download staff." };
   }
 };
 
 
 
-export const getStaffReport = async (startDate, endDate) => {
-  const token = localStorage.getItem("token");
-  const res = await fetch(`/api/staffReport?startDate=${startDate}&endDate=${endDate}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return res.json();
+
+
+
+// ================== TRIP MANAGEMENT ==================
+
+// Get paginated trips
+export const getTrips = async (page = 1) => {
+  try {
+    const res = await api.get(`/admin/rideManagement?page=${page}`);
+    return {
+      success: true,
+      data: {
+        trips: res.data.ride,
+        totalRide: res.data.totalRide,
+      },
+    };
+  } catch (err) {
+    return { success: false, message: err.response?.data?.message || "Failed to fetch staff" };
+  }
+};
+
+// Search trips by phone
+export const searchTrips = async (phone) => {
+  try {
+    const res = await api.get(`/admin/searchRide?phone=${encodeURIComponent(phone)}`);
+    return res.data;
+  } catch (error) {
+    return { success: false, message: error.response?.data?.message || "Search failed" };
+  }
+};
+
+
+// Get trip report by date range
+export const getTripsByDate = async (startDate, endDate) => {
+  try {
+    const response = await api.get(`/report/tripReport?startDate=${startDate}&endDate=${endDate}`);
+    return response.data; // { success, data }
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Failed to fetch users by date");
+  }
 };
 
 
 
 
-// Trip management here
-
-export const getTrips = async (token, page = 1) => {
-  const res = await fetch(`/api/rideManagement?page=${page}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return res.json();
-};
-
-export const searchTrips = async (token, phone) => {
-  const res = await fetch(`/api/searchRide`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ phone }),
-  });
-  return res.json();
-};
-
-export const getTripReport = async (token, startDate, endDate) => {
-  const res = await fetch(`/api/tripReport?startDate=${startDate}&endDate=${endDate}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return res.json();
-};
 
 
 
 // car management here
-
-
-const API_BASE_URL = 'http://localhost:5000'; 
-
-const getToken = () => localStorage.getItem('authToken');
-
+// Get paginated cars
 export const getCars = async (page = 1, limit = 6) => {
   try {
-    const token = getToken();
-    const res = await axios.get(`${API_BASE_URL}/carManagement?page=${page}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.data.success) {
-      return {
-        success: true,
-        data: {
-          cars: res.data.cars,
-          totalCount: res.data.totalCars,
-          pageCount: res.data.pageCount
+    const res = await api.get(`/admin/carManagement?page=${page}&limit=${limit}`);
+    return res.data.success
+      ? {
+          success: true,
+          data: {
+            cars: res.data.cars,
+            totalCount: res.data.totalCars,
+            pageCount: res.data.pageCount,
+          },
         }
-      };
-    }
-    return { success: false, message: 'Failed to fetch cars' };
+      : { success: false, message: "Failed to fetch cars" };
   } catch (error) {
-    console.error(error);
-    return { success: false, message: error.message };
-  }
-};
-
-export const searchCar = async (token, plate_no) => {
-  try {
-    token = token || getToken();
-    const res = await axios.get(`${API_BASE_URL}/searchCar`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { plate_no }
-    });
-    if (res.data.success) {
-      return { success: true, data: [res.data.car] }; 
-    }
-    return { success: false, message: 'Car not found' };
-  } catch (error) {
-    console.error(error);
     return { success: false, message: error.response?.data?.message || error.message };
   }
 };
 
-export const updateCar = async (token, carId, editData) => {
+// Search car by plate_no
+export const searchCar = async (plate_no) => {
   try {
-    token = token || getToken();
-    const { carName, carType, registrationDate } = editData;
-    const res = await axios.patch(`${API_BASE_URL}/editCar`, 
-      { model: carName, car_type: carType, plate_no: carId },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (res.data.success) return { success: true, data: res.data.cars };
-    return { success: false, message: 'Failed to update car' };
+    const res = await api.get(`/admin/searchCar?plate_no=${encodeURIComponent(plate_no)}`);
+    return res.data;
   } catch (error) {
-    console.error(error);
+    return { success: false, message: error.response?.data?.message || "Search failed" };
+  }
+};
+
+// Update car
+export const updateCar = async (carId, editData) => {
+  try {
+    const { carName, carType } = editData;
+    const res = await api.patch(`/editCar`, { model: carName, car_type: carType, plate_no: carId });
+    return res.data.success ? { success: true, data: res.data.cars } : { success: false, message: "Failed to update car" };
+  } catch (error) {
     return { success: false, message: error.response?.data?.message || error.message };
   }
 };
 
-export const deleteCar = async (token, carId) => {
+// Delete car
+export const deleteCar = async (carId) => {
   try {
-    token = token || getToken();
-    const res = await axios.delete(`${API_BASE_URL}/deleteCar`, {
-      headers: { Authorization: `Bearer ${token}` },
-      data: { plate_no: carId }
-    });
+    const res = await api.delete(`/deleteCar`, { data: { plate_no: carId } });
     return res.data.success ? { success: true } : { success: false, message: res.data.message };
   } catch (error) {
-    console.error(error);
     return { success: false, message: error.response?.data?.message || error.message };
   }
 };
 
-export const registerCar = async (token, formData) => {
+// Register car
+export const registerCar = async (formData) => {
   try {
-    token = token || getToken();
-    const { plate_no, carName, carType, registrationDate } = formData;
-    const res = await axios.post(`${API_BASE_URL}/addCar`,
-      { plate_no, model: carName, car_type: carType, registrationDate },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const { plate_no, carName, carType } = formData;
+    const res = await api.post(`/addCar`, { plate_no, model: carName, car_type: carType });
     return res.data.success ? { success: true } : { success: false, message: res.data.message };
   } catch (error) {
-    console.error(error);
     return { success: false, message: error.response?.data?.message || error.message };
   }
 };
 
 
+
+
+// Get trip report by date range
 export const getCarsByDate = async (startDate, endDate) => {
   try {
-    const token = getToken();
-    const res = await axios.get(`${API_BASE_URL}/carReport`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { startDate, endDate }
-    });
-    return res.data.success ? { success: true, data: res.data.data } : { success: false };
+    const response = await api.get(`/report/carReport?startDate=${startDate}&endDate=${endDate}`);
+    return response.data; // { success, data }
   } catch (error) {
-    console.error(error);
-    return { success: false, message: error.response?.data?.message || error.message };
+    throw new Error(error.response?.data?.message || "Failed to fetch users by date");
   }
 };
+
+

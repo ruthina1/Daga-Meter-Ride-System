@@ -3,10 +3,9 @@ import React, { useState, useEffect } from 'react';
 import {
   getTrips,
   searchTrips,
-  getTripsByDate,
-  getTripReport
+  getTripsByDate
 } from '../services/api';
-import { FaSearch, FaArrowLeft, FaArrowRight, FaDownload } from 'react-icons/fa';
+import { FaSearch, FaArrowLeft, FaArrowRight, FaDownload, FaFilter} from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import '../styles/TripManagement.css';
 
@@ -21,23 +20,24 @@ export default function TripManagement() {
   const [endDate, setEndDate] = useState('');
 
   const tripsPerPage = 6;
-  const token = localStorage.getItem('token');
 
   // Fetch trips
-  const fetchTrips = async (page = currentPage) => {
-    setLoading(true);
-    try {
-      const result = await getTrips(token, page);
-      if (result.success) {
-        setTrips(result.data.trips || []);
-        setTotalTrips(result.data.totalCount || 0);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+   const fetchTrips = async () => {
+     setLoading(true);
+     try {
+       const result = await getTrips(currentPage);
+        if (result.success) {
+          setTrips(result.data.trips || []);     // <-- expects "trips"
+          setTotalTrips(result.data.totalRide || 0);
+        }
+        else {
+         console.error(result.message);
+       }
+     } catch (error) {
+       console.error(error);
+     }
+     setLoading(false);
+   };
 
   useEffect(() => {
     fetchTrips(currentPage);
@@ -47,27 +47,57 @@ export default function TripManagement() {
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
       setIsSearching(false);
-      fetchTrips(1);
+      fetchTrips();
       return;
     }
+    setLoading(true);
+    const result = await searchTrips(searchTerm);
+    if (result.success && result.trip) {
+      
+      setTrips(result.trip); // backend returns single driver
+      setIsSearching(true);
+      console.log(trips);
+    } else {
+      setTrips([]); // no driver found
+      setIsSearching(true);
+    }
 
-    setIsSearching(true);
+    setLoading(false);
+  };
+
+  const filterTripsByDate = async () => {
+    if (!startDate || !endDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
+  
+    console.log("Filtering with dates:", { startDate, endDate }); // Debug log
+  
     setLoading(true);
     try {
-      const result = await searchTrips(token, searchTerm);
-      if (result.success) {
-        setTrips(result.data.trips || []);
-        setTotalTrips(result.data.trips.length || 0);
+      const result = await getTripsByDate(startDate, endDate);
+      console.log("API Response:", result); // Debug log
+      
+      if (result.success && result.data) {
+        setTrips(result.data || []); 
+        setIsSearching(true); 
+        setTotalTrips(result.data.length || 0); 
+        console.log("Filtered drivers:", result.data.length); // Debug log
+      } else {
+        setTrips([]);
+        setTotalTrips(0);
+        alert("No drivers found for the selected date range.");
       }
     } catch (error) {
-      console.error(error);
+      console.error("Filter error:", error);
+      console.error("Error details:", error.response); // More detailed error info
+      alert("Failed to filter drivers by date: " + (error.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
   };
 
   // Download trips filtered by date
- // Download trips filtered by date (printable report)
 const handleDownload = async () => {
   if (!startDate || !endDate) {
     alert('Please select start and end date.');
@@ -75,65 +105,245 @@ const handleDownload = async () => {
   }
 
   try {
-    const res = await getTripReport(token, startDate, endDate);
+    const res = await getTripsByDate(startDate, endDate);
     if (!res.success || !res.data.length) {
-      alert('No trips available for the selected date range.');
+      alert('No drivers available for the selected date range.');
       return;
     }
 
-    const tripsData = res.data;
+    const TripsData = res.data;
+    const dateRangeText = `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`;
+    const generatedDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
-    const dateRangeText = `${startDate} to ${endDate}`;
     const printWindow = window.open('', '_blank');
 
     const htmlContent = `
       <html>
         <head>
-          <title>Trip Report</title>
+          <title>Daga Meter Ride - Trip Report</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h2 { text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-            th { background-color: #f8f9fa; font-weight: bold; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            
+            body { 
+              font-family: 'Inter', sans-serif; 
+              margin: 0; 
+              padding: 0;
+              color: #333;
+              background: #f8f9fa;
+            }
+            
+            .report-container {
+              max-width: 210mm;
+              min-height: 297mm;
+              margin: 0 auto;
+              background: white;
+              padding: 25mm;
+              box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            }
+            
+            .header {
+              text-align: center;
+              border-bottom: 3px solid #2c5aa0;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            
+            .company-name {
+              font-size: 32px;
+              font-weight: 700;
+              color: #2c5aa0;
+              margin: 0;
+            }
+            
+            .company-tagline {
+              font-size: 16px;
+              color: #666;
+              font-weight: 300;
+              margin: 5px 0 0 0;
+            }
+            
+            .report-title {
+              font-size: 24px;
+              font-weight: 600;
+              color: #2c5aa0;
+              text-align: center;
+              margin: 30px 0;
+            }
+            
+            .report-meta {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 15px;
+              margin-bottom: 30px;
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 8px;
+              border-left: 4px solid #2c5aa0;
+            }
+            
+            .meta-item {
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .meta-label {
+              font-size: 12px;
+              font-weight: 600;
+              color: #666;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            
+            .meta-value {
+              font-size: 14px;
+              font-weight: 500;
+              color: #333;
+            }
+            
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 25px 0;
+              font-size: 12px;
+            }
+            
+            th {
+              background: #2c5aa0;
+              color: white;
+              padding: 12px 8px;
+              text-align: left;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              border: 1px solid #1e3d6d;
+            }
+            
+            td {
+              padding: 10px 8px;
+              border: 1px solid #ddd;
+              text-align: left;
+            }
+            
+            tr:nth-child(even) {
+              background-color: #f8f9fa;
+            }
+            
+            .total-row {
+              background: #e3f2fd !important;
+              font-weight: 600;
+              border-top: 2px solid #2c5aa0;
+            }
+            
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 2px solid #ddd;
+              text-align: center;
+              font-size: 11px;
+              color: #666;
+            }
+            
+            .footer-content {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 10px;
+            }
+            
+            @media print {
+              body { margin: 0; }
+              .report-container { 
+                box-shadow: none; 
+                padding: 15mm;
+              }
+            }
           </style>
         </head>
         <body>
-          <h2>Trip Report</h2>
-          <div>Date Range: ${dateRangeText}</div>
-          <div>Total Trips: ${tripsData.length}</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Passenger Name</th>
-                <th>Driver Name</th>
-                <th>Initial Location</th>
-                <th>Destination</th>
-                <th>Ride Date & Time</th>
-                <th>Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tripsData.map(trip => `
+          <div class="report-container">
+            <!-- Header -->
+            <div class="header">
+              <h1 class="company-name">Daga Meter Ride</h1>
+              <p class="company-tagline">Your Trusted Ride-Hailing Partner</p>
+              <h2 class="report-title">Drivers Management Report</h2>
+            </div>
+            
+            <!-- Report Metadata -->
+            <div class="report-meta">
+              <div class="meta-item">
+                <span class="meta-label">Date Range</span>
+                <span class="meta-value">${dateRangeText}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Total Trips</span>
+                <span class="meta-value">${TripsData.length.toLocaleString()}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Report Generated</span>
+                <span class="meta-value">${generatedDate}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Report Type</span>
+                <span class="meta-value">Trip Analysis Report</span>
+              </div>
+            </div>
+            
+            <!-- Trip Table -->
+            <table>
+              <thead>
                 <tr>
-                  <td>${trip.passengerName}</td>
-                  <td>${trip.driverName}</td>
-                  <td>${trip.initialLocation}</td>
-                  <td>${trip.destinationLocation}</td>
-                  <td>${new Date(trip.rideDateTime).toLocaleString()}</td>
-                  <td>${trip.price.toLocaleString()} ETB</td>
+                  <th>#</th>
+                  <th>Passenger Name</th>
+                  <th>Driver Name</th>
+                  <th>Initial Location</th>
+                  <th>Destination</th>
+                  <th>Ride Date and Time</th>
+                  <th>Price</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${TripsData.map((trip, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${trip.user_name || 'N/A'}</td>
+                    <td>${trip.driver_name || 'N/A'}</td>
+                    <td>${trip.source_location || 'N/A'}</td>
+                    <td>${trip.destinationLocation || 'N/A'}</td>
+                    <td>${trip.created_at ? new Date(trip.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td>${trip.price || 'N/A'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <!-- Footer -->
+            <div class="footer">
+              <div class="footer-content">
+                <div>Daga Meter Ride - Trip Management System</div>
+                <div>Confidential Report</div>
+              </div>
+              <div>© ${new Date().getFullYear()} Daga Meter Ride. All rights reserved.</div>
+              <div>Generated by Admin Panel</div>
+            </div>
+          </div>
         </body>
       </html>
     `;
 
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-    printWindow.onload = () => printWindow.print();
+    printWindow.onload = () => {
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    };
 
   } catch (error) {
     console.error('Error generating report:', error);
@@ -168,8 +378,8 @@ const handleDownload = async () => {
         </div>
 
         {/* Search, Date Filters, Download */}
-        <div className="search-containeru">
-          <div className="search-input-containeru">
+        <div className="search-container">
+          <div className="search-input-container">
             <input
               type="text"
               placeholder="Search"
@@ -190,7 +400,13 @@ const handleDownload = async () => {
             to
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="date-inputu" />
           </div>
-
+           <button 
+              onClick={filterTripsByDate} 
+              className="filter-date-button"
+              disabled={!startDate || !endDate}
+            >
+              <FaFilter /> Filter
+            </button>
           {/* Download */}
           <button onClick={handleDownload} className="download-button"><FaDownload /> Download</button>
         </div>
@@ -211,9 +427,9 @@ const handleDownload = async () => {
             <tbody>
               {trips.map((trip) => (
                 <tr key={trip.id}>
-                  <td>{trip.passengerName}</td>
-                  <td>{trip.driverName}</td>
-                  <td>{trip.initialLocation}</td>
+                  <td>{trip.user_name}</td>
+                  <td>{trip.driver_name}</td>
+                  <td>{trip.source_location}</td>
                   <td>{trip.destinationLocation}</td>
                   <td>{new Date(trip.rideDateTime).toLocaleString()}</td>
                   <td>{trip.price.toLocaleString()} ETB</td>

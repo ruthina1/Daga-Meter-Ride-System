@@ -1,10 +1,10 @@
 // src/admin/components/DriverManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { getDrivers, updateDriver, deleteDriver, searchDrivers, registerDriver} from '../services/api';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight, FaPlus, FaDownload, FaEye } from 'react-icons/fa';
+import { 
+  getDrivers, updateDriver, deleteDriver, searchDrivers, registerDriver, getDriversByDate 
+} from '../services/api';
+import { FaEdit, FaTrash, FaFilter ,FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight, FaPlus, FaDownload, FaEye } from 'react-icons/fa';
 import Sidebar from './Sidebar';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import '../styles/DriverManagement.css';
 
 export default function DriverManagement() {
@@ -28,265 +28,374 @@ export default function DriverManagement() {
     fetchDrivers();
   }, [currentPage]);
 
- const fetchDrivers = async () => {
-  setLoading(true);
-
-  try {
-    const token = localStorage.getItem('authToken');
-    // Backend call with page query
-    const response = await fetch(`/api/driverManagement?page=${currentPage}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const result = await response.json();
-
-    if (response.ok) {
-      setDrivers(result.drivers || []);
-      
-      if (result.totalDrivers !== undefined) {
-        setTotalDrivers(result.totalDrivers);
+  const fetchDrivers = async () => {
+    setLoading(true);
+    try {
+      const result = await getDrivers(currentPage);
+      if (result.success) {
+        setDrivers(result.data.drivers || []);
+        setTotalDrivers(result.data.totalCount || 0);
+      } else {
+        console.error(result.message);
       }
-    } else {
-      console.error("Error fetching drivers:", result.message || "Unknown error");
+    } catch (error) {
+      console.error(error);
     }
-  } catch (error) {
-    console.error("Fetch drivers failed:", error);
-  }
+    setLoading(false);
+  };
 
-  setLoading(false);
-};
-
-  const fetchDriversByDate = async () => {
-  if (!startDate || !endDate) return;
-
-  setLoading(true);
-  try {
-    const token = localStorage.getItem('authToken');
-    const response = await fetch(
-      `/api/driverManagement?startDate=${startDate}&endDate=${endDate}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const result = await response.json();
-
-    if (response.ok) {
-      setDrivers(result.drivers || []);
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      setIsSearching(false);
+      fetchDrivers();
+      return;
+    }
+    setLoading(true);
+    const result = await searchDrivers(searchTerm);
+    if (result.success && result.driver) {
+      
+      setDrivers(result.driver); // backend returns single driver
       setIsSearching(true);
+      console.log(drivers);
     } else {
-      console.error("Error fetching drivers by date:", result.message || "Unknown error");
-    }
-  } catch (error) {
-    console.error("Fetch drivers by date failed:", error);
-  }
-  setLoading(false);
-};
-
-
-const handleSearch = async () => {
-  if (!searchTerm.trim()) {
-    setIsSearching(false);
-    fetchDrivers();
-    return;
-  }
-
-  setIsSearching(true);
-  setLoading(true);
-  const token = localStorage.getItem('authToken');
-  const result = await searchDrivers(token, searchTerm);
-
-  if (result.success) {
-    // Try backend search first
-    let filtered = result.data;
-
-    // If backend didn’t return anything, fallback to local filter
-    if (!filtered || filtered.length === 0) {
-      const allDrivers = await fetchDrivers(); // fetch all from API
-      filtered = allDrivers.filter(driver =>
-        driver.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.phoneNumber.includes(searchTerm)
-      );
+      setDrivers([]); // no driver found
+      setIsSearching(true);
     }
 
-    setDrivers(filtered);
-  }
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
-
- const handleEdit = (driver) => {
-  setEditingId(driver.id);
+const handleEdit = (driver) => {
+  setEditingId(driver.phone);
   setEditData({
-    fullName: driver.fullName,
-    phoneNumber: driver.phoneNumber,
-    plateNumber: driver.plateNumber,
-    license: driver.license
+    name: driver.name,
+    phone: driver.phone,
+    plate_no: driver.plate_no,
+    license: null,
   });
 };
 
-  const handleSave = async (driverId) => {
-    const token = localStorage.getItem('authToken');
-    const result = await updateDriver(token, driverId, editData);
-    
+  const handleSave = async (driver) => {
+  const { name, phone, plate_no } = editData;
+
+  try {
+    const result = await updateDriver(name, phone, plate_no, currentPage);
+
     if (result.success) {
-      setDrivers(drivers.map(driver => 
-        driver.id === driverId ? { ...driver, ...editData } : driver
-      ));
+
+      fetchDrivers(); // refetch the current page
       setEditingId(null);
       setEditData({});
+      setDrivers(prev =>
+        prev.map(d =>
+          d.phone === driver.phone ? { ...d, name: name, phone: phone, plate_no: plate_no } : d
+        )
+      );
+
+      setEditingId(null);
+      setEditData({});
+    } else {
+      console.error(result.message);
     }
-  };
+  } catch (err) {
+    console.error("Update failed:", err);
+  }
+};
+
 
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditData({});
   };
 
- const handleDelete = async (phoneNumber) => {
-  const token = localStorage.getItem('authToken');
-  const result = await deleteDriver(token, phoneNumber); 
-
-  if (result.success) {
-    setDrivers(prevDrivers => prevDrivers.filter(driver => driver.phoneNumber !== phoneNumber));
-    setTotalDrivers(prev => prev - 1);
-    setDeleteConfirm(null);
-  } else {
-    alert(result.message || "Failed to delete driver");
-  }
-};
-
-
-  const handleInputChange = (field, value) => {
-    setEditData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleDelete = async (driver) => {
+    const result = await deleteDriver(driver.phoneNumber, currentPage);
+    if (result.success) {
+      setDrivers(prev => prev.filter(d => d.id !== driver.id));
+      setTotalDrivers(prev => prev - 1);
+      setDeleteConfirm(null);
+    } else {
+      console.error(result.message);
+    }
   };
 
-  const handleClearSearch = () => {
-    setSearchTerm('');
-    setStartDate('');
-    setEndDate('');
-    setIsSearching(false);
-    fetchDrivers();
+  const handleInputChange = (field, value) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleLicenseUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setLicensePreview(e.target.result);
-        setEditData(prev => ({ ...prev, license: file }));
-      };
+      reader.onload = () => setLicensePreview(reader.result);
       reader.readAsDataURL(file);
+      setEditData(prev => ({ ...prev, license: file }));
     }
   };
 
-  const handleRegister = async (formData) => {
-    const token = localStorage.getItem('authToken');
-    const result = await registerDriver(token, formData);
+  // Filter drivers by date
+const filterDriversByDate = async () => {
+  if (!startDate || !endDate) {
+    alert("Please select both start and end dates.");
+    return;
+  }
+
+  console.log("Filtering with dates:", { startDate, endDate }); // Debug log
+
+  setLoading(true);
+  try {
+    const result = await getDriversByDate(startDate, endDate);
+    console.log("API Response:", result); // Debug log
     
-    if (result.success) {
-      setShowRegisterForm(false);
-      fetchDrivers();
+    if (result.success && result.data) {
+      setDrivers(result.data || []); 
+      setIsSearching(true); 
+      setTotalDrivers(result.data.length || 0); 
+      console.log("Filtered drivers:", result.data.length); // Debug log
+    } else {
+      setDrivers([]);
+      setTotalDrivers(0);
+      alert("No drivers found for the selected date range.");
     }
-    return result;
-  };
+  } catch (error) {
+    console.error("Filter error:", error);
+    console.error("Error details:", error.response); // More detailed error info
+    alert("Failed to filter drivers by date: " + (error.message || "Unknown error"));
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const handleDownloadReport = () => {
-  if (!startDate || !endDate || drivers.length === 0) {
-    alert("No driver data available for the selected date range.");
+// Download drivers report
+const handleDownload = async () => {
+  if (!startDate || !endDate) {
+    alert('Please select start and end date.');
     return;
   }
 
   try {
+    const res = await getDriversByDate(startDate, endDate);
+    if (!res.success || !res.data.length) {
+      alert('No drivers available for the selected date range.');
+      return;
+    }
+
+    const driversData = res.data;
+    const dateRangeText = `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`;
+    const generatedDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
     const printWindow = window.open('', '_blank');
 
-    const dateRangeText = `${startDate} to ${endDate}`;
-    
     const htmlContent = `
-      <!DOCTYPE html>
       <html>
         <head>
-          <title>Driver Management Report</title>
+          <title>Daga Meter Ride - Drivers Report</title>
           <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 20px;
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            
+            body { 
+              font-family: 'Inter', sans-serif; 
+              margin: 0; 
+              padding: 0;
               color: #333;
+              background: #f8f9fa;
             }
+            
+            .report-container {
+              max-width: 210mm;
+              min-height: 297mm;
+              margin: 0 auto;
+              background: white;
+              padding: 25mm;
+              box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            }
+            
             .header {
               text-align: center;
-              margin-bottom: 20px;
+              border-bottom: 3px solid #2c5aa0;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
             }
-            .header h1 {
-              font-size: 24px;
-              margin-bottom: 5px;
-              color: #2c3e50;
+            
+            .company-name {
+              font-size: 32px;
+              font-weight: 700;
+              color: #2c5aa0;
+              margin: 0;
             }
-            .filters {
-              margin-bottom: 15px;
-              font-size: 14px;
+            
+            .company-tagline {
+              font-size: 16px;
               color: #666;
+              font-weight: 300;
+              margin: 5px 0 0 0;
             }
+            
+            .report-title {
+              font-size: 24px;
+              font-weight: 600;
+              color: #2c5aa0;
+              text-align: center;
+              margin: 30px 0;
+            }
+            
+            .report-meta {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 15px;
+              margin-bottom: 30px;
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 8px;
+              border-left: 4px solid #2c5aa0;
+            }
+            
+            .meta-item {
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .meta-label {
+              font-size: 12px;
+              font-weight: 600;
+              color: #666;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            
+            .meta-value {
+              font-size: 14px;
+              font-weight: 500;
+              color: #333;
+            }
+            
             table {
               width: 100%;
               border-collapse: collapse;
-              margin-top: 10px;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 10px;
-              text-align: left;
-              font-size: 13px;
-            }
-            th {
-              background-color: #f8f9fa;
-              font-weight: bold;
-              color: #333;
-            }
-            tr:nth-child(even) {
-              background-color: #f9f9f9;
-            }
-            .footer {
-              margin-top: 20px;
+              margin: 25px 0;
               font-size: 12px;
-              color: #777;
+            }
+            
+            th {
+              background: #2c5aa0;
+              color: white;
+              padding: 12px 8px;
+              text-align: left;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              border: 1px solid #1e3d6d;
+            }
+            
+            td {
+              padding: 10px 8px;
+              border: 1px solid #ddd;
+              text-align: left;
+            }
+            
+            tr:nth-child(even) {
+              background-color: #f8f9fa;
+            }
+            
+            .total-row {
+              background: #e3f2fd !important;
+              font-weight: 600;
+              border-top: 2px solid #2c5aa0;
+            }
+            
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 2px solid #ddd;
               text-align: center;
+              font-size: 11px;
+              color: #666;
+            }
+            
+            .footer-content {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 10px;
+            }
+            
+            @media print {
+              body { margin: 0; }
+              .report-container { 
+                box-shadow: none; 
+                padding: 15mm;
+              }
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>Driver Management Report</h1>
-            <div class="filters">
-              <div>Date Range: ${dateRangeText}</div>
-              <div>Generated on: ${new Date().toLocaleString()}</div>
-              <div>Total Drivers: ${drivers.length}</div>
+          <div class="report-container">
+            <!-- Header -->
+            <div class="header">
+              <h1 class="company-name">Daga Meter Ride</h1>
+              <p class="company-tagline">Your Trusted Ride-Hailing Partner</p>
+              <h2 class="report-title">Drivers Management Report</h2>
             </div>
-          </div>
-          
-          <table>
-            <thead>
-              <tr>
-                <th>Full Name</th>
-                <th>Phone Number</th>
-                <th>Plate Number</th>
-                <th>Registration Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${drivers.map(driver => `
+            
+            <!-- Report Metadata -->
+            <div class="report-meta">
+              <div class="meta-item">
+                <span class="meta-label">Date Range</span>
+                <span class="meta-value">${dateRangeText}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Total Drivers</span>
+                <span class="meta-value">${driversData.length.toLocaleString()}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Report Generated</span>
+                <span class="meta-value">${generatedDate}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Report Type</span>
+                <span class="meta-value">Driver Analysis Report</span>
+              </div>
+            </div>
+            
+            <!-- Drivers Table -->
+            <table>
+              <thead>
                 <tr>
-                  <td>${driver.fullName}</td>
-                  <td>${driver.phoneNumber}</td>
-                  <td>${driver.plateNumber}</td>
-                  <td>${new Date(driver.registrationDate).toLocaleDateString()}</td>
+                  <th>#</th>
+                  <th>Full Name</th>
+                  <th>Phone Number</th>
+                  <th>Plate Number</th>
+                  <th>Registration Date</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          
-          <div class="footer">
-            Report generated by Daga Meter Ride System
+              </thead>
+              <tbody>
+                ${driversData.map((driver, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${driver.name || 'N/A'}</td>
+                    <td>${driver.phone || 'N/A'}</td>
+                    <td>${driver.plate_no || 'N/A'}</td>
+                    <td>${driver.created_at ? new Date(driver.created_at).toLocaleDateString() : 'N/A'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <!-- Footer -->
+            <div class="footer">
+              <div class="footer-content">
+                <div>Daga Meter Ride - Drivers Management System</div>
+                <div>Confidential Report</div>
+              </div>
+              <div>© ${new Date().getFullYear()} Daga Meter Ride. All rights reserved.</div>
+              <div>Generated by Admin Panel</div>
+            </div>
           </div>
         </body>
       </html>
@@ -294,108 +403,166 @@ const handleSearch = async () => {
 
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-
-    let fileName = `driver_report_${startDate}_to_${endDate}`;
-
-    printWindow.onload = function() {
-      try {
+    printWindow.onload = () => {
+      printWindow.focus();
+      setTimeout(() => {
         printWindow.print();
-      } catch (e) {
-        console.error("Print error:", e);
-        alert("Report opened in new window. Use your browser's Print > Save as PDF option.");
-      }
+      }, 500);
     };
+
   } catch (error) {
-    console.error("Error generating driver report:", error);
-    alert("Failed to generate driver report. Please try again.");
+    console.error('Error generating report:', error);
+    alert('Failed to generate report.');
   }
 };
 
+// new driver registration 
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+const handleRegister = async (formData) => {
+  const { name, phone, plate_no, password, licence } = formData;
+  if (!name || !phone || !plate_no || !password || !licence) {
+    alert('Please fill all required fields');
+    return { success: false, message: 'All fields are required' };
+  }
+  
+  const submitData = new FormData();
+  submitData.append("name", name);
+  submitData.append("phone", phone);
+  submitData.append("plate_no", plate_no);
+  submitData.append("password", password);
+  submitData.append("licence", licence);
+  
+  console.log("Submitting driver data:", {
+    name: name,
+    phone: phone,
+    plate_no: plate_no,
+    hasPassword: !!password,
+    hasLicence: !!licence,
+    licenceType: licence?.type,
+    licenceSize: licence?.size
+  });
+  
+  try {
+    const result = await registerDriver(submitData);
+    
+    console.log("Registration result:", result);
+    
+    if (result.success) {
+      setShowRegisterForm(false);
+      setRegistrationSuccess(true);
+      fetchDrivers();
+      
+      // Show success message
+      setTimeout(() => {
+        setRegistrationSuccess(false);
+      }, 3000);
+      
+      return result;
+    } else {
+      // Show specific error message from backend
+      alert(result.message || "Registration failed");
+      return result;
+    }
+  } catch (error) {
+    console.error("Registration error:", error);
+    alert("Registration failed: " + (error.message || "Unknown error"));
+    return { success: false, message: error.message };
+  }
+};
+
+const handleClearSearch = () => {
+  setSearchTerm('');
+  setIsSearching(false);
+  setCurrentPage(1);
+  setStartDate('');
+  setEndDate('');
+  fetchDrivers(1); 
+};
 
   const totalPages = Math.ceil(totalDrivers / driversPerPage);
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div>Loading driver data...</div>
-      </div>
-    );
-  }
-
-
+  if (loading) return <div className="loading-container">Loading driver data...</div>;
 
   return (
     <div className="dashboard-container">
       <Sidebar />
-      
       <div className="driver-management-container">
-        <div className="stats-container">
-          <div className="stat-card">
-            <div className="stat-title">Total Drivers</div>
-            <div className="stat-value">{totalDrivers}</div>
-          </div>
-
-          <div className="search-container">
-            <div className="search-input-container">
-              <FaSearch className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="search-input"
-              />
-              {searchTerm && (
-              <button onClick={handleClearSearch} className="clear-input-button">
-                ×
-              </button>
+        {/* Stats and search */}
+{/* Stats and search */}
+      <div className="stats-container">
+        <div className="stat-card">
+          <div className="stat-title">Total Drivers</div>
+          <div className="stat-value">{totalDrivers}</div>
+        </div>
+        
+        {/* Search */}
+        <div className="search-container">
+          <div className="search-input-container">
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onKeyPress={e => e.key === 'Enter' && handleSearch()}
+              className="search-input"
+            />
+            <button onClick={handleSearch} className="search-buttonu"><FaSearch /> Search</button>
+            {searchTerm && (
+              <button onClick={handleClearSearch} className="clear-input-button">×</button>
             )}
-            </div>
-            <button onClick={handleSearch} className="search-button">
-              <FaSearch /> Search
-            </button>
-          </div>
 
+          </div>
+          
+          {/* Date filters */}
+          
         </div>
+        
+      </div>
 
-        <div className="filters-container">
-          <div className="date-filter-container">
-            <div className="date-inputs-row">
-              <div className="date-input-group">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="date-input"
-                />
-              </div>
-              <label> to </label>
-              <div className="date-input-group">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="date-input"
-                />
-              </div>
-            </div>
-          </div>
+      {registrationSuccess && (
+  <div className="success-message">
+    ✅ Driver registered successfully!
+  </div>
+)}
 
-          <div className="action-buttons-container">
+      <div className="date-filter-containerd">
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)} 
+              className="date-inputd" 
+            />
+            <label>to</label>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)} 
+              className="date-inputd" 
+            />
             <button 
-              onClick={handleDownloadReport} 
-              className="download-button"
-              disabled={!startDate || !endDate || drivers.length === 0}
-            >
-              <FaDownload /> Download
-            </button>
-            <button onClick={() => setShowRegisterForm(true)} className="new-driver-button">
-              <FaPlus /> New Driver
-            </button>
-          </div>
-        </div>
+                    onClick={filterDriversByDate} 
+                    className="filter-date-button"
+                    disabled={!startDate || !endDate}
+                  >
+                    <FaFilter /> Filter
+                  </button>
+             {/* Download */}
+          <button onClick={handleDownload} className="download-buttonu">
+            <FaDownload /> Download
+          </button>
 
+           <button 
+                onClick={() => setShowRegisterForm(true)} 
+                className="new-driver-buttond"
+              >
+                <FaPlus /> New Driver
+              </button>
+          </div>
+          
+         
+
+        {/* Drivers table */}
         <div className="drivers-table-container">
           <table className="drivers-table">
             <thead>
@@ -403,107 +570,45 @@ const handleSearch = async () => {
                 <th>Full Name</th>
                 <th>Phone Number</th>
                 <th>Plate Number</th>
-                <th>Registration Date</th>
                 <th>License</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {drivers.map((driver) => (
-                <tr key={driver.id}>
+              {drivers.map(driver => (
+                <tr key={driver.phone}>
                   <td>
-                    {editingId === driver.id ? (
-                      <input
-                        type="text"
-                        value={editData.fullName || ''}
-                        onChange={(e) => handleInputChange('fullName', e.target.value)}
-                        className="edit-input"
-                      />
+                    {editingId === driver.phone ? (
+                      <input type="text" value={editData.name || ''} onChange={e => handleInputChange('name', e.target.value)} />
+                    ) : driver.name}
+                  </td>
+                  <td>
+                    {editingId === driver.phone ? (
+                      <input type="text" value={editData.phone || ''} onChange={e => handleInputChange('phone', e.target.value)} />
+                    ) : driver.phone}
+                  </td>
+                  <td>
+                    {editingId === driver.phone ? (
+                      <input type="text" value={editData.plate_no || ''} onChange={e => handleInputChange('plate_no', e.target.value)} />
+                    ) : driver.plate_no}
+                  </td>
+                  <td>
+                    {editingId === driver.phone ? (
+                      <input type="file" onChange={handleLicenseUpload} />
                     ) : (
-                      driver.fullName
+                      <button onClick={() => window.open(driver.license, '_blank')} className='view-license-button '><FaEye /></button>
                     )}
                   </td>
                   <td>
-                    {editingId === driver.id ? (
-                      <input
-                        type="text"
-                        value={editData.phoneNumber || ''}
-                        onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                        className="edit-input"
-                      />
-                    ) : (
-                      driver.phoneNumber
-                    )}
-                  </td>
-                  <td>
-                    {editingId === driver.id ? (
-                      <input
-                        type="text"
-                        value={editData.plateNumber || ''}
-                        onChange={(e) => handleInputChange('plateNumber', e.target.value)}
-                        className="edit-input"
-                      />
-                    ) : (
-                      driver.plateNumber
-                    )}
-                  </td>
-                  <td>{new Date(driver.registrationDate).toLocaleDateString()}</td>
-                  <td>
-                    {editingId === driver.id ? (
-                      <div className="license-upload">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLicenseUpload}
-                          className="license-input"
-                        />
-                        {licensePreview && (
-                          <img src={licensePreview} alt="License preview" className="license-preview" />
-                        )}
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => window.open(driver.license, '_blank')}
-                        className="view-license-button"
-                      >
-                        <FaEye /> View
-                      </button>
-                    )}
-                  </td>
-                  <td>
-                    {editingId === driver.id ? (
+                    {editingId === driver.phone ? (
                       <div className="action-buttons">
-                        <button
-                          onClick={() => handleSave(driver.id)}
-                          className="action-button save-button"
-                          title="Save"
-                        >
-                          <FaSave />
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="action-button cancel-button"
-                          title="Cancel"
-                        >
-                          <FaTimes />
-                        </button>
+                        <button onClick={() => handleSave(driver)} className="action-button save-button"><FaSave /></button>
+                        <button onClick={handleCancelEdit} className="action-button cancel-button"><FaTimes/></button>
                       </div>
                     ) : (
                       <div className="action-buttons">
-                        <button
-                          onClick={() => handleEdit(driver)}
-                          className="action-button edit-button"
-                          title="Edit"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(driver.id)}
-                          className="action-button delete-button"
-                          title="Delete"
-                        >
-                          <FaTrash />
-                        </button>
+                        <button onClick={() => handleEdit(driver)} className="action-button edit-button"><FaEdit /></button>
+                        <button onClick={() => setDeleteConfirm(driver.id)} className="action-button delete-button"><FaTrash /></button>
                       </div>
                     )}
                   </td>
@@ -511,62 +616,29 @@ const handleSearch = async () => {
               ))}
             </tbody>
           </table>
-
-          {drivers.length === 0 && (
-            <div className="no-drivers">
-              {isSearching ? 'No drivers found matching your search' : 'No drivers found'}
-            </div>
-          )}
         </div>
 
+        {/* Pagination */}
         {!isSearching && totalPages > 1 && (
           <div className="paginationd">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="pagination-button"
-              title="Previous page"
-            >
-              <FaArrowLeft /> Previous
-            </button>
-            <span className="page-info">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="pagination-button"
-              title="Next page"
-            >
-              Next <FaArrowRight />
-            </button>
+            <button className="pagination-button" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}><FaArrowLeft /> Prev</button>
+            <span>Page {currentPage} of {totalPages}</span>
+            <button className="pagination-button" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>Next <FaArrowRight /></button>
           </div>
         )}
 
-            {deleteConfirm && (
-            <div className="delete-modal">
-              <div className="delete-modal-content">
-                <h3>Confirm Delete</h3>
-                <p>Are you sure you want to delete this driver permanently?</p>
-                <div className="delete-modal-actions">
-                  <button
-                    onClick={() => handleDelete(drivers.find(d => d.id === deleteConfirm)?.phoneNumber)}
-                    className="confirm-delete-button"
-                  >
-                    Yes, Delete
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm(null)}
-                    className="cancel-delete-button"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
+        {/* Delete confirm modal */}
+        {deleteConfirm && (
+          <div className="delete-modal">
+            <div>
+              <p>Are you sure you want to delete this driver?</p>
+              <button onClick={() => handleDelete(drivers.find(d => d.id === deleteConfirm))}>Yes</button>
+              <button onClick={() => setDeleteConfirm(null)}>Cancel</button>
             </div>
-          )}
+          </div>
+        )}
 
-
+        {/* Register driver */}
         {showRegisterForm && (
           <DriverRegistrationForm 
             onClose={() => setShowRegisterForm(false)}
@@ -580,14 +652,16 @@ const handleSearch = async () => {
 
 
 
+
+
 // Driver Registration Form Component
 function DriverRegistrationForm({ onClose, onRegister }) {
   const [formData, setFormData] = useState({
-    fullName: '',
-    phoneNumber: '',
-    plateNumber: '',
+    name: '',
+    phone: '',
+    plate_no: '',
     password: '',
-    license: null
+    licence: null
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -632,63 +706,84 @@ function DriverRegistrationForm({ onClose, onRegister }) {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    const newErrors = {};
-    if (!formData.fullName) newErrors.fullName = 'Full name is required';
-    if (!formData.phoneNumber) newErrors.phoneNumber = 'Phone number is required';
-    if (!formData.plateNumber) newErrors.plateNumber = 'Plate number is required';
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (validatePassword(formData.password) !== 'strong') {
-      newErrors.password = 'Password does not meet requirements';
-    }
-    if (!formData.license) newErrors.license = 'License image is required';
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  const newErrors = {};
+  if (!formData.name) newErrors.name = 'Full name is required';
+  if (!formData.phone) newErrors.phone = 'Phone number is required';
+  if (!formData.plate_no) newErrors.plate_no = 'Plate number is required';
+  if (!formData.password) {
+    newErrors.password = 'Password is required';
+  } else if (validatePassword(formData.password) !== 'strong') {
+    newErrors.password = 'Password does not meet requirements';
+  }
+  if (!formData.licence) newErrors.licence = 'License image is required';
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const result = await onRegister(formData);
+    
+    if (result.success) {
+      alert('Driver registered successfully!');
+      // Reset form after success
+      setFormData({
+        name: '',
+        phone: '',
+        plate_no: '',
+        password: '',
+        licence: null
+      });
+      setLicensePreview(null);
+    } else {
+      setErrors({ submit: result.message || 'Registration failed' });
+    }
+  } catch (error) {
+    setErrors({ submit: error.message || 'Registration failed' });
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleLicenseUpload = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors({ licence: 'File size must be less than 5MB' });
       return;
     }
 
-    setLoading(true);
-    const result = await onRegister(formData);
-    setLoading(false);
-
-    if (!result.success) {
-      setErrors({ submit: result.message });
+    // Check file type - allow common image formats
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setErrors({ licence: 'Please upload a valid image file (JPEG, PNG, GIF)' });
+      return;
     }
-  };
 
-  const handleLicenseUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors({ license: 'File size must be less than 5MB' });
-        return;
-      }
-
-      // Check file type
-      if (!file.type.startsWith('image/')) {
-        setErrors({ license: 'Please upload an image file' });
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setLicensePreview(e.target.result);
-        setFormData(prev => ({ ...prev, license: file }));
-        setErrors(prev => ({ ...prev, license: '' }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setLicensePreview(e.target.result);
+      setFormData(prev => ({ ...prev, licence: file }));
+      setErrors(prev => ({ ...prev, licence: '' }));
+    };
+    reader.onerror = () => {
+      setErrors({ licence: 'Error reading file. Please try again.' });
+    };
+    reader.readAsDataURL(file);
+  }
+};
 
   const removeLicense = () => {
     setLicensePreview(null);
-    setFormData(prev => ({ ...prev, license: null }));
+    setFormData(prev => ({ ...prev, licence: null }));
   };
+
 
   return (
     <div className="modal-overlay">
@@ -706,24 +801,24 @@ function DriverRegistrationForm({ onClose, onRegister }) {
               <label>Full Name *</label>
               <input
                 type="text"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className={errors.fullName ? 'error' : ''}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className={errors.name ? 'error' : ''}
                 placeholder="Enter full name"
               />
-              {errors.fullName && <span className="error-text">{errors.fullName}</span>}
+              {errors.name && <span className="error-text">{errors.name}</span>}
             </div>
 
             <div className="form-group">
               <label>Phone Number *</label>
               <input
                 type="text"
-                value={formData.phoneNumber}
-                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                className={errors.phoneNumber ? 'error' : ''}
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className={errors.phone ? 'error' : ''}
                 placeholder="+251900000000"
               />
-              {errors.phoneNumber && <span className="error-text">{errors.phoneNumber}</span>}
+              {errors.phone && <span className="error-text">{errors.phone}</span>}
             </div>
           </div>
 
@@ -732,12 +827,12 @@ function DriverRegistrationForm({ onClose, onRegister }) {
               <label>Plate Number *</label>
               <input
                 type="text"
-                value={formData.plateNumber}
-                onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value })}
-                className={errors.plateNumber ? 'error' : ''}
+                value={formData.plate_no}
+                onChange={(e) => setFormData({ ...formData, plate_no: e.target.value })}
+                className={errors.plate_no ? 'error' : ''}
                 placeholder="AA000BB"
               />
-              {errors.plateNumber && <span className="error-text">{errors.plateNumber}</span>}
+              {errors.plate_no && <span className="error-text">{errors.plate_no}</span>}
             </div>
 
             <div className="form-group">
@@ -779,14 +874,10 @@ function DriverRegistrationForm({ onClose, onRegister }) {
                     className="license-input-hidden"
                     id="license-upload"
                   />
-                  <label htmlFor="license-upload" className="license-upload-label">
-                    <FaPlus className="upload-icon" />
-                    <span>Upload License Image</span>
-                    <small>Max 5MB, JPG/PNG</small>
-                  </label>
+                 
                 </div>
               )}
-              {errors.license && <span className="error-text">{errors.license}</span>}
+              {errors.licence && <span className="error-text">{errors.licence}</span>}
             </div>
           </div>
 

@@ -36,14 +36,15 @@
   color: #333;
 }
 
-.search-containeru {
+.search-container {
   display: flex;
   justify-content: space-between;
   margin-bottom: 20px;
   align-items: center;
+  margin-left: 0;
 }
 
-.search-input-containeru {
+.search-input-container {
   position: relative;
   flex: 1;
   display: flex;
@@ -56,7 +57,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
-  width: 20vw;
+  width: 16.5vw;
 }
 
 .clear-input-button {

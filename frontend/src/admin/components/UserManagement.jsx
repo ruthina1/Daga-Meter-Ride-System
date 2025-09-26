@@ -1,7 +1,7 @@
 // src/admin/components/UserManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { getUsers, updateUser, deleteUser, searchUsers, getUsersByDate, downloadUsers } from '../services/api';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight, FaDownload } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaSearch, FaArrowLeft, FaArrowRight, FaDownload, FaFilter } from 'react-icons/fa';
 import Sidebar from './Sidebar';
 import '../styles/UserManagement.css';
 
@@ -22,59 +22,308 @@ export default function UserManagement() {
 
   // Fetch users
   const fetchUsers = async (page = currentPage) => {
-    setLoading(true);
-    try {
-      const result = await getUsers(page);
-      setUsers(result.users || []);
-      setTotalUsers(result.totalCount || result.users.length || 0);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const result = await getUsers(page);
+    setUsers(result.users || []);
+    // Change from result.totalCount to result.totalUsers to match backend response
+    setTotalUsers(result.totalUsers || result.users?.length || 0);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchUsers(currentPage);
   }, [currentPage]);
 
-  // Search users
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) {
-      setIsSearching(false);
-      fetchUsers(1);
+
+const handleSearch = async () => {
+  if (!searchTerm.trim()) {
+    setIsSearching(false);
+    fetchUsers(1);
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const result = await searchUsers(searchTerm);
+    if (result.success && result.user) {
+      // Backend returns single user object, convert to array for consistency
+      setUsers(Array.isArray(result.user) ? result.user : [result.user]);
+      setIsSearching(true);
+    } else {
+      setUsers([]); // no user found
+      setIsSearching(true);
+    }
+  } catch (error) {
+    console.error(error);
+    setUsers([]);
+    setIsSearching(true);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Download users
+ // Download users - updated function
+const handleDownload = async () => {
+  if (!startDate || !endDate) {
+    alert('Please select start and end date.');
+    return;
+  }
+
+  try {
+    const res = await getUsersByDate(startDate, endDate);
+    if (!res.success || !res.data.length) {
+      alert('No drivers available for the selected date range.');
       return;
     }
 
-    setIsSearching(true);
-    setLoading(true);
-    try {
-      const result = await searchUsers(searchTerm);
-      setUsers(result.users || []);
-      setTotalUsers(result.users.length || 0);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const usersData = res.data;
+    const dateRangeText = `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`;
+    const generatedDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
+    const printWindow = window.open('', '_blank');
 
-  // Download users
-  const handleDownload = async () => {
-    try {
-      await downloadUsers(); // Backend should handle CSV or Excel download
-    } catch (error) {
-      console.error(error);
-    }
-  };
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Daga Meter Ride - Users Report</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            
+            body { 
+              font-family: 'Inter', sans-serif; 
+              margin: 0; 
+              padding: 0;
+              color: #333;
+              background: #f8f9fa;
+            }
+            
+            .report-container {
+              max-width: 210mm;
+              min-height: 297mm;
+              margin: 0 auto;
+              background: white;
+              padding: 25mm;
+              box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            }
+            
+            .header {
+              text-align: center;
+              border-bottom: 3px solid #2c5aa0;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            
+            .company-name {
+              font-size: 32px;
+              font-weight: 700;
+              color: #2c5aa0;
+              margin: 0;
+            }
+            
+            .company-tagline {
+              font-size: 16px;
+              color: #666;
+              font-weight: 300;
+              margin: 5px 0 0 0;
+            }
+            
+            .report-title {
+              font-size: 24px;
+              font-weight: 600;
+              color: #2c5aa0;
+              text-align: center;
+              margin: 30px 0;
+            }
+            
+            .report-meta {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 15px;
+              margin-bottom: 30px;
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 8px;
+              border-left: 4px solid #2c5aa0;
+            }
+            
+            .meta-item {
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .meta-label {
+              font-size: 12px;
+              font-weight: 600;
+              color: #666;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            
+            .meta-value {
+              font-size: 14px;
+              font-weight: 500;
+              color: #333;
+            }
+            
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 25px 0;
+              font-size: 12px;
+            }
+            
+            th {
+              background: #2c5aa0;
+              color: white;
+              padding: 12px 8px;
+              text-align: left;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              border: 1px solid #1e3d6d;
+            }
+            
+            td {
+              padding: 10px 8px;
+              border: 1px solid #ddd;
+              text-align: left;
+            }
+            
+            tr:nth-child(even) {
+              background-color: #f8f9fa;
+            }
+            
+            .total-row {
+              background: #e3f2fd !important;
+              font-weight: 600;
+              border-top: 2px solid #2c5aa0;
+            }
+            
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 2px solid #ddd;
+              text-align: center;
+              font-size: 11px;
+              color: #666;
+            }
+            
+            .footer-content {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 10px;
+            }
+            
+            @media print {
+              body { margin: 0; }
+              .report-container { 
+                box-shadow: none; 
+                padding: 15mm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report-container">
+            <!-- Header -->
+            <div class="header">
+              <h1 class="company-name">Daga Meter Ride</h1>
+              <p class="company-tagline">Your Trusted Ride-Hailing Partner</p>
+              <h2 class="report-title">Users Management Report</h2>
+            </div>
+            
+            <!-- Report Metadata -->
+            <div class="report-meta">
+              <div class="meta-item">
+                <span class="meta-label">Date Range</span>
+                <span class="meta-value">${dateRangeText}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Total Drivers</span>
+                <span class="meta-value">${usersData.length.toLocaleString()}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Report Generated</span>
+                <span class="meta-value">${generatedDate}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Report Type</span>
+                <span class="meta-value">Users Analysis Report</span>
+              </div>
+            </div>
+            
+            <!-- Users Table -->
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Full Name</th>
+                  <th>Phone Number</th>
+                  <th>Registration Date</th>
+                  <th>Total Payment</th>
 
+                </tr>
+              </thead>
+              <tbody>
+                ${usersData.map((user, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${user.name || 'N/A'}</td>
+                    <td>${user.phone || 'N/A'}</td>
+                    <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td>${user.totalPayment || 'N/A'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <!-- Footer -->
+            <div class="footer">
+              <div class="footer-content">
+                <div>Daga Meter Ride - Users Management System</div>
+                <div>Confidential Report</div>
+              </div>
+              <div>© ${new Date().getFullYear()} Daga Meter Ride. All rights reserved.</div>
+              <div>Generated by Admin Panel</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    };
+
+  } catch (error) {
+    console.error('Error generating report:', error);
+    alert('Failed to generate report.');
+  }
+};
   // Edit user
   const handleEdit = (user) => {
     setEditingId(user.id);
     setEditData({
-      fullName: user.fullName,
-      phoneNumber: user.phoneNumber
+      name: user.name,
+      phone: user.phone
     });
   };
 
@@ -114,15 +363,40 @@ export default function UserManagement() {
     setEditData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleClearSearch = () => {
-    setSearchTerm('');
-    setIsSearching(false);
-    setCurrentPage(1);
-    setStartDate('');
-    setEndDate('');
-    fetchUsers(1);
-  };
+const handleClearSearch = () => {
+  setSearchTerm('');
+  setIsSearching(false);
+  setCurrentPage(1);
+  setStartDate('');
+  setEndDate('');
+  fetchUsers(1); 
+};
 
+const filterUsersByDate = async () => {
+  if (!startDate || !endDate) {
+    alert("Please select both start and end dates.");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const result = await getUsersByDate(startDate, endDate);
+    if (result.success && result.data) {
+      setUsers(result.data || []); 
+      setIsSearching(true); 
+      setTotalUsers(result.data.length || 0); 
+    } else {
+      setUsers([]);
+      setTotalUsers(0);
+      alert("No users found for the selected date range.");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Failed to filter users by date.");
+  } finally {
+    setLoading(false);
+  }
+};
   const totalPages = Math.ceil(totalUsers / usersPerPage);
 
   if (loading) {
@@ -166,12 +440,30 @@ export default function UserManagement() {
           
 
           {/* Date filters */}
-
+{/* Date filters */}
+         {/* Date filters */}
           <div className="date-filter-containeru">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="date-inputu" /><label>to</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="date-inputu" />
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)} 
+              className="date-inputu" 
+            />
+            <label>to</label>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)} 
+              className="date-inputu" 
+            />
+            <button 
+              onClick={filterUsersByDate} 
+              className="filter-date-button"
+              disabled={!startDate || !endDate}
+            >
+              <FaFilter /> Filter
+            </button>
           </div>
-
           {/* Download */}
           <button onClick={handleDownload} className="download-buttonu"><FaDownload /> Download</button>
         </div>
@@ -190,33 +482,33 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.phoneNumber}>
+                <tr key={user.phone}>
                   <td>
-                    {editingId === user.phoneNumber ? (
+                    {editingId === user.phone ? (
                       <input
                         type="text"
                         value={editData.fullName || ''}
                         onChange={(e) => handleInputChange('fullName', e.target.value)}
                         className="edit-input"
                       />
-                    ) : user.fullName}
+                    ) : user.name}
                   </td>
                   <td>
-                    {editingId === user.phoneNumber ? (
+                    {editingId === user.phone ? (
                       <input
                         type="text"
                         value={editData.phoneNumber || ''}
                         onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                         className="edit-input"
                       />
-                    ) : user.phoneNumber}
+                    ) : user.phone}
                   </td>
                   <td>{user.registrationDate ? new Date(user.registrationDate).toLocaleDateString() : 'N/A'}</td>
 
-                  <td>{user.totalPayment != null ? user.totalPayment.toLocaleString() : '0'} ETB</td>
+                  <td>{user.total_spent != null ? user.total_spent.toLocaleString() : '0'} ETB</td>
 
                   <td>
-                    {editingId === user.phoneNumber ? (
+                    {editingId === user.phone ? (
                       <div className="action-buttons">
                         <button onClick={() => handleSave(user.phoneNumber)} className="action-button save-button" title="Save"><FaSave /></button>
                         <button onClick={handleCancelEdit} className="action-button cancel-button" title="Cancel"><FaTimes /></button>

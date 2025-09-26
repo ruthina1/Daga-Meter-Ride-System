@@ -228,37 +228,6 @@
   font-size: 14px;
 }
 
-.license-upload {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.license-input {
-  padding: 5px;
-  font-size: 12px;
-}
-
-.license-preview {
-  width: 50px;
-  height: 50px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-
-.view-license-button {
-  padding: 6px 10px;
-  border: 1px solid #007bff;
-  border-radius: 4px;
-  background: white;
-  color: #007bff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-}
-
 .action-buttons {
   display: flex;
   gap: 5px;
@@ -392,4 +361,10 @@
   .action-buttons {
     flex-direction: column;
   }
+}
+
+.car-registration-modal{
+  background-color: white;
+  padding: 24px;
+  width: 40%;
 }

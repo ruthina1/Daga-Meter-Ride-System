@@ -17,19 +17,16 @@ export default function Login({ onLogin }) {
     const result = await login(credentials);
     console.log("Login API result:", result);
 
-    if (result.success) {
-      // save token for ProtectedRoute
-      localStorage.setItem("token", result.token);
-      localStorage.setItem("admin", JSON.stringify(result.user)); // backend sends admin object
+         if (result.success) {
+  localStorage.setItem("token", result.token); // consistent key
+  localStorage.setItem("admin", JSON.stringify(result.user));
 
-      // call parent handler if needed
-      if (onLogin) {
-        onLogin(result.token, result.user);
+        if (onLogin) {
+          onLogin(result.token, result.user);
+        }
+        navigate("/dashboard");
       }
-
-      // ✅ navigate to dashboard (your App.js route)
-      navigate("/dashboard");
-    } else {
+ else {
       setError(result.message);
     }
 

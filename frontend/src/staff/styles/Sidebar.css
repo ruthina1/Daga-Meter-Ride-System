@@ -2,7 +2,6 @@
 .side-bar {
   position: fixed;
   top: 0;
-  right: -300px;
   width: 280px;
   height: 100vh;
   background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
@@ -12,10 +11,11 @@
   flex-direction: column;
   box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+  margin-right: auto;
 }
 
 .side-bar.visible {
-  right: 0;
+  left: 0;
 }
 
 .sidebar-overlay {
