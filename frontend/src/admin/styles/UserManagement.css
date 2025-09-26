@@ -97,19 +97,16 @@
   color: #333;
 }
 
-
-
-
-.clear-input-button {
-  position: absolute;
-  right: 2%;
+.clear-input-buttonu {
+  position: relative;
   background: none;
+  margin-right: 5%;
   border: none;
   font-size: 1.2vw;
   color: #666;
   cursor: pointer;
   padding: 0;
-  width: 2%;
+  width: 0.5%;
   height: 2%;
   display: flex;
   align-items: center;

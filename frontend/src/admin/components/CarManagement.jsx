@@ -53,8 +53,8 @@ const fetchCars = async () => {
   setLoading(true);
   const result = await searchCar(searchTerm);
 
-  if (result.success && result.cars) {   
-    setCars(result.cars);               
+  if (result.success && result.car) {   
+    setCars(result.car);               
     setIsSearching(true);
     console.log(result.cars);
   } else {
@@ -103,15 +103,54 @@ const fetchCars = async () => {
     setEditData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRegister = async (formData) => {
-    const result = await registerCar(token, formData);
-    if (result.success) {
-      setShowRegisterForm(false);
-      fetchCars();
-    }
-    return result;
-  };
 
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  
+  const handleRegister = async (formData) => {
+    const { model, plate_no, car_type } = formData;
+    if (!model || !plate_no || !car_type) {
+      alert('Please fill all required fields');
+      return { success: false, message: 'All fields are required' };
+    }
+    
+    const submitData = new FormData();
+    submitData.append("model", model);
+    submitData.append("plate_no", plate_no);
+    submitData.append("car_type", car_type);
+    
+    console.log("Submitting car data:", {
+      model: model,
+      plate_no: plate_no,
+      car_type: car_type,
+    });
+    
+    try {
+      const result = await registerCar(submitData);
+      
+      console.log("Registration result:", result);
+      
+      if (result.success) {
+        setShowRegisterForm(false);
+        setRegistrationSuccess(true);
+        fetchCars();
+        
+        // Show success message
+        setTimeout(() => {
+          setRegistrationSuccess(false);
+        }, 3000);
+        
+        return result;
+      } else {
+        // Show specific error message from backend
+        alert(result.message || "Registration failed");
+        return result;
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      alert("Registration failed: " + (error.message || "Unknown error"));
+      return { success: false, message: error.message };
+    }
+  };
   const totalPages = Math.ceil(totalCars / carsPerPage);
 
   if (loading) return <div className="loading-container">Loading car data...</div>;
@@ -366,7 +405,15 @@ const fetchCars = async () => {
      alert('Failed to generate report.');
    }
  };
- 
+ const handleClearSearch = () => {
+  setSearchTerm('');
+  setIsSearching(false);
+  setCurrentPage(1);
+  setStartDate('');
+  setEndDate('');
+  fetchCars(1); 
+};
+
 
 
   const filterCarsByDate = async () => {
@@ -422,6 +469,9 @@ const fetchCars = async () => {
                          onKeyPress={e => e.key === 'Enter' && handleSearch()}
                          className="search-input"
                        />
+                       {searchTerm && (
+              <button onClick={handleClearSearch} className="clear-input-button">×</button>
+            )}
                        <button onClick={handleSearch} className="search-buttonu"><FaSearch /> Search</button>
                      </div>
           </div>
@@ -547,7 +597,6 @@ function CarRegistrationForm({ onClose, onRegister }) {
   const [formData, setFormData] = useState({
   plate_no: '',    
   model: '',
-  driver_name: '',
   car_type: 'Normal',
   registrationDate: ''
 });
@@ -559,7 +608,6 @@ function CarRegistrationForm({ onClose, onRegister }) {
     e.preventDefault();
     const newErrors = {};
     if (!formData.model) newErrors.model = 'Car name is required';
-    if (!formData.driver_name) newErrors.driver_name = 'Driver is required';
     if (!formData.plate_no) newErrors.plate_no = 'Plate Number is required';
     if (!formData.car_type) newErrors.car_type = 'Car Type is required';
 
@@ -608,13 +656,6 @@ function CarRegistrationForm({ onClose, onRegister }) {
               className={errors.plate_no ? 'error' : ''}
             />
             {errors.plate_no && <span className="error-text">{errors.plate_no}</span>}
-          </div>
-
-
-          <div className="form-group">
-            <label>Driver Name *</label>
-            <input type="number" value={formData.driver_name} onChange={(e) => setFormData({ ...formData, driver_name: e.target.value })} className={errors.driver_name ? 'error' : ''} />
-            {errors.driver_name && <span className="error-text">{errors.driver_name}</span>}
           </div>
 
           <div className="form-group">

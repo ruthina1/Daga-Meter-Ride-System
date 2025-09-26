@@ -478,14 +478,28 @@ export const deleteCar = async (carId) => {
 // Register car
 export const registerCar = async (formData) => {
   try {
-    const { plate_no, carName, carType } = formData;
-    const res = await api.post(`/addCar`, { plate_no, model: carName, car_type: carType });
-    return res.data.success ? { success: true } : { success: false, message: res.data.message };
+    console.log("Sending registration request to /admin/addCar");
+    
+    const res = await api.post("/admin/addCar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    console.log("Registration response:", res.data);
+    return res.data;
+
   } catch (error) {
-    return { success: false, message: error.response?.data?.message || error.message };
+    console.error("Registration error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    return {
+      success: false,
+      message: error.response?.data?.message || error.response?.data || "Registration failed. Check console for details.",
+    };
   }
 };
-
 
 
 

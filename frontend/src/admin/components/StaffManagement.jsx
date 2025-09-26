@@ -425,7 +425,14 @@ export default function StaffManagement() {
   };
 
 
-
+const handleClearSearch = () => {
+  setSearchTerm('');
+  setIsSearching(false);
+  setCurrentPage(1);
+  setStartDate('');
+  setEndDate('');
+  fetchStaff(1); 
+};
 
   const totalPages = Math.ceil(totalStaff / staffPerPage);
 
@@ -452,6 +459,9 @@ export default function StaffManagement() {
                 onKeyPress={e => e.key==='Enter' && handleSearch()}
                 className="search-input"
               />
+                 {searchTerm && (
+              <button onClick={handleClearSearch} className="clear-input-buttonu">×</button>
+            )}
               <button onClick={handleSearch} className="search-button"><FaSearch /> Search</button>
             </div>
           </div>

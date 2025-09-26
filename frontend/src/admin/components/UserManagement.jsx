@@ -432,7 +432,7 @@ const filterUsersByDate = async () => {
               className="search-input"
             />
             {searchTerm && (
-              <button onClick={handleClearSearch} className="clear-input-button">×</button>
+              <button onClick={handleClearSearch} className="clear-input-buttonu">×</button>
             )}
 
             <button onClick={handleSearch} className="search-buttonu"><FaSearch /> Search</button>
